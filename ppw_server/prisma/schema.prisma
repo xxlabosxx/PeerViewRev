@@ -104,8 +104,8 @@ model AuditLog {
   justificativa  String?
   timestamp      DateTime      @default(now())
 
-  artigo Artigo  @relation(fields: [artigoId], references: [id], onDelete: Cascade)
-  autor  Usuario @relation(fields: [autorId], references: [id], onDelete: Cascade)
+  artigo Artigo  @relation(fields: [artigoId], references: [id], onDelete: Restrict)
+  autor  Usuario @relation(fields: [autorId], references: [id], onDelete: Restrict)
 
   @@index([artigoId])
   @@map("audit_logs")

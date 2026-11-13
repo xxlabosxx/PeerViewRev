@@ -4,7 +4,7 @@
 
 ### 1. Pergunta / Prompt Enviado para a IA
 
-_Não preenchido_
+Como funcionam transações ACID no Prisma ($transaction) e como eu aplico isso em um backend NestJS de revisão de artigos científicos para atualizar o status do artigo e gravar um histórico imutável (AuditLog) na mesma operação, sem acoplar minha entidade de domínio ao Prisma?
 
 ### 2. Resposta da IA
 

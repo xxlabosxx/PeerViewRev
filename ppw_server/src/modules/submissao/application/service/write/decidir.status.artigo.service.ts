@@ -1,5 +1,14 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { DecidirStatusArtigoUseCase } from '../../use-case/write/decidir.status.artigo.use-case';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import type {
+  DecidirStatusArtigoUseCase,
+  DecidirStatusOpcoes,
+} from '../../use-case/write/decidir.status.artigo.use-case';
 import type { DecidirStatusResponse } from '../../dto/submissao.dto.response';
 import { ARTIGO_READ_REPOSITORY } from '../../../domain/ports/artigo.read.repository';
 import type { ArtigoReadRepository } from '../../../domain/ports/artigo.read.repository';
@@ -16,18 +25,42 @@ export class DecidirStatusArtigoService implements DecidirStatusArtigoUseCase {
     private readonly writeRepository: ArtigoWriteRepository,
   ) {}
 
-  async execute(artigoId: string, status: 'ACEITO' | 'REJEITADO'): Promise<DecidirStatusResponse> {
+  async execute(
+    artigoId: string,
+    status: 'ACEITO' | 'REJEITADO',
+    opcoes?: DecidirStatusOpcoes,
+  ): Promise<DecidirStatusResponse> {
     const artigo = await this.readRepository.buscarPorId(artigoId);
     if (!artigo) {
       throw new NotFoundException('Artigo não encontrado.');
     }
+
+    const estadoAnterior = artigo.status.getValue();
 
     try {
       artigo.decidirStatus(status as StatusArtigoEnum.ACEITO | StatusArtigoEnum.REJEITADO);
     } catch (error: any) {
       throw new BadRequestException(error.message);
     }
-    await this.writeRepository.salvar(artigo);
+
+    const atorId = opcoes?.atorId || artigo.editorId || artigo.autorId;
+    const justificativa =
+      opcoes?.justificativa?.trim() ||
+      `Decisão editorial registrada: manuscrito ${artigo.status.getValue()}.`;
+
+    try {
+      await this.writeRepository.salvarComAuditoria(artigo, {
+        estadoAnterior,
+        novoEstado: artigo.status.getValue(),
+        atorId,
+        justificativa,
+      });
+    } catch (error: any) {
+      if (error?.message?.includes('Conflito de concorrência')) {
+        throw new ConflictException(error.message);
+      }
+      throw new BadRequestException(error.message);
+    }
 
     return {
       mensagem: 'Status do artigo decidido',

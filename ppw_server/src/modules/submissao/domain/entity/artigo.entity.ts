@@ -2,6 +2,7 @@ import { Entity } from '../../../../core/domain/Entity';
 import { StatusArtigoValueObject, StatusArtigoEnum } from '../value-objects/status.value.object';
 import { ManuscritoValueObject } from '../value-objects/manuscrito.value.object';
 import { RevisaoEntity } from './revisao.entity';
+import { AuditLogEntity } from './audit-log.entity';
 
 export interface ArtigoProps {
   id?: string;
@@ -12,8 +13,10 @@ export interface ArtigoProps {
   manuscrito: ManuscritoValueObject;
   manuscritoIdentificado?: ManuscritoValueObject;
   status: StatusArtigoValueObject;
+  versao?: number;
   revisoresIds: string[];
   revisoes: RevisaoEntity[];
+  historicoAuditoria?: AuditLogEntity[];
 }
 
 export class ArtigoEntity extends Entity<ArtigoProps> {
@@ -49,15 +52,24 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
         ...props,
         editorId: undefined,
         status: StatusArtigoValueObject.pendente(),
+        versao: 1,
         revisoresIds: [],
         revisoes: [],
+        historicoAuditoria: [],
       },
       id,
     );
   }
 
   public static restore(props: ArtigoProps, id: string): ArtigoEntity {
-    return new ArtigoEntity(props, id);
+    return new ArtigoEntity(
+      {
+        ...props,
+        versao: props.versao ?? 1,
+        historicoAuditoria: props.historicoAuditoria ?? [],
+      },
+      id,
+    );
   }
 
   public getProps(): ArtigoProps {
@@ -98,6 +110,25 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
 
   get revisoes(): RevisaoEntity[] {
     return [...this.props.revisoes];
+  }
+
+  get versao(): number {
+    return this.props.versao ?? 1;
+  }
+
+  get historicoAuditoria(): AuditLogEntity[] {
+    return [...(this.props.historicoAuditoria ?? [])];
+  }
+
+  public incrementarVersao(): void {
+    this.props.versao = (this.props.versao ?? 1) + 1;
+  }
+
+  public adicionarLogAuditoria(log: AuditLogEntity): void {
+    if (!this.props.historicoAuditoria) {
+      this.props.historicoAuditoria = [];
+    }
+    this.props.historicoAuditoria.push(log);
   }
 
   public alterarDados(props: {

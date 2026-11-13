@@ -16,6 +16,17 @@ export interface RevisorDetalhe {
   instituicao?: string;
 }
 
+export interface AuditLogItem {
+  id: string;
+  artigoId: string;
+  estadoAnterior: string | null;
+  novoEstado: string;
+  autorId: string;
+  autorNome?: string;
+  justificativa?: string;
+  timestamp: string;
+}
+
 export interface UsuarioItem {
   id: string;
   nome: string;
@@ -33,6 +44,7 @@ export interface Artigo {
   nomeArquivoIdentificado?: string;
   urlManuscritoIdentificado?: string;
   status: string;
+  versao?: number;
   autorId: string;
   autorNome?: string;
   autorInstituicao?: string;
@@ -41,6 +53,7 @@ export interface Artigo {
   revisoresIds: string[];
   revisoresDetalhes?: RevisorDetalhe[];
   revisoes: RevisaoItem[];
+  historicoAuditoria?: AuditLogItem[];
   blindReviewAtivo?: boolean;
 }
 
@@ -237,11 +250,15 @@ export const api = {
     return response.json();
   },
 
-  decidirStatus: async (artigoId: string, status: 'ACEITO' | 'REJEITADO') => {
+  decidirStatus: async (
+    artigoId: string,
+    status: 'ACEITO' | 'REJEITADO',
+    justificativa?: string,
+  ) => {
     const response = await fetch(`${API_URL}/submissoes/artigo/${artigoId}/decidir`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', ...getViewerHeaders() },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, justificativa }),
     });
     if (!response.ok) {
       throw new Error(await extractErrorMessage(response, 'Falha ao decidir status do artigo'));

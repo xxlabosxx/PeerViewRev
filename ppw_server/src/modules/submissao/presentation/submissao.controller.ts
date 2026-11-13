@@ -161,13 +161,27 @@ export class SubmissaoController {
   }
 
   @Patch('artigo/:id/decidir')
-  async decidirStatus(@Param('id') artigoId: string, @Body() body: DecidirStatusRequest) {
-    return await this.decidirStatusArtigoUseCase.execute(artigoId, body.status);
+  async decidirStatus(
+    @Param('id') artigoId: string,
+    @Body() body: DecidirStatusRequest,
+    @Headers('x-user-id') userId?: string,
+  ) {
+    return await this.decidirStatusArtigoUseCase.execute(artigoId, body.status, {
+      atorId: body.editorId || userId,
+      justificativa: body.justificativa,
+    });
   }
 
   @Patch('artigo/:id/publicar')
-  async publicarArtigo(@Param('id') artigoId: string) {
-    return await this.publicarArtigoUseCase.execute(artigoId);
+  async publicarArtigo(
+    @Param('id') artigoId: string,
+    @Headers('x-user-id') userId?: string,
+    @Body('justificativa') justificativa?: string,
+  ) {
+    return await this.publicarArtigoUseCase.execute(artigoId, {
+      atorId: userId,
+      justificativa,
+    });
   }
 
   @Get('artigos')

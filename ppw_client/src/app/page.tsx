@@ -32,6 +32,7 @@ export default function Dashboard() {
 
   const [isDecideModalOpen, setIsDecideModalOpen] = useState(false);
   const [decideStatus, setDecideStatus] = useState<'ACEITO' | 'REJEITADO'>('ACEITO');
+  const [decideJustificativa, setDecideJustificativa] = useState('');
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [artigoParaExcluir, setArtigoParaExcluir] = useState<Artigo | null>(null);
@@ -139,14 +140,19 @@ export default function Dashboard() {
   const openDecideModal = (artigoId: string) => {
     setSelectedArtigoId(artigoId);
     setDecideStatus('ACEITO');
+    setDecideJustificativa('');
     setIsDecideModalOpen(true);
   };
 
   const handleDecideStatus = async () => {
     if (!selectedArtigoId) return;
     try {
-      await api.decidirStatus(selectedArtigoId, decideStatus);
-      showMessage('Status decidido com sucesso!', 'success');
+      await api.decidirStatus(
+        selectedArtigoId,
+        decideStatus,
+        decideJustificativa.trim() || undefined,
+      );
+      showMessage('Status decidido e AuditLog gravado em transação ACID!', 'success');
       setIsDecideModalOpen(false);
       buscarArtigos();
     } catch (err: unknown) {
@@ -460,6 +466,33 @@ export default function Dashboard() {
                       </ul>
                     </div>
                   )}
+
+                  {artigo.historicoAuditoria && artigo.historicoAuditoria.length > 0 && (
+                    <div className="mt-4 border-t border-gray-100 pt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600">
+                          Trilha de Auditoria Imutável (Audit Log • v{artigo.versao ?? 1})
+                        </h4>
+                      </div>
+                      <ol className="space-y-1.5 text-xs text-gray-600 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        {artigo.historicoAuditoria.map((log) => (
+                          <li key={log.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 border-b last:border-b-0 border-slate-200/70 pb-1.5 last:pb-0">
+                            <div>
+                              <span className="font-semibold text-slate-800">
+                                {log.estadoAnterior ? `${log.estadoAnterior} → ${log.novoEstado}` : `SUBMETIDO → ${log.novoEstado}`}
+                              </span>
+                              {log.justificativa && (
+                                <span className="text-slate-600 ml-1.5">— {log.justificativa}</span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-slate-500 shrink-0">
+                              {log.autorNome || 'Sistema'} • {new Date(log.timestamp).toLocaleString('pt-BR')}
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col items-end gap-3 shrink-0 sm:min-w-[160px]">
@@ -755,6 +788,19 @@ export default function Dashboard() {
                   />
                   <span className="font-bold text-gray-900">REJEITAR Artigo</span>
                 </label>
+
+                <div className="pt-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Justificativa Editorial (Audit Log Imutável)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={decideJustificativa}
+                    onChange={(e) => setDecideJustificativa(e.target.value)}
+                    placeholder="Descreva a justificativa desta transição de estado para a trilha de auditoria..."
+                    className="w-full border border-gray-300 rounded-xl p-2.5 text-sm text-gray-900 bg-gray-50 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  />
+                </div>
               </div>
             </div>
             

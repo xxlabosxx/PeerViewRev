@@ -1,4 +1,11 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { SubmeterArtigoUseCase } from '../../use-case/write/submeter.artigo.use-case';
 import type { SubmeterArtigoRequest } from '../../dto/submissao.dto.request';
 import type { SubmeterArtigoResponse } from '../../dto/submissao.dto.response';
@@ -28,7 +35,12 @@ export class SubmeterArtigoService implements SubmeterArtigoUseCase {
 
     try {
       const artigoEntity = ArtigoMappers.toArtigoEntityFromRequest(request);
-      await this.repository.salvar(artigoEntity);
+      await this.repository.salvarComAuditoria(artigoEntity, {
+        estadoAnterior: null,
+        novoEstado: artigoEntity.status.getValue(),
+        atorId: request.autorId,
+        justificativa: 'Submissão inicial do manuscrito científico.',
+      });
 
       return {
         mensagem: 'Artigo submetido com sucesso',
@@ -36,6 +48,9 @@ export class SubmeterArtigoService implements SubmeterArtigoUseCase {
         status: artigoEntity.status.getValue(),
       };
     } catch (error: any) {
+      if (error?.message?.includes('Conflito de concorrência')) {
+        throw new ConflictException(error.message);
+      }
       throw new BadRequestException(error.message || 'Erro ao submeter artigo.');
     }
   }
