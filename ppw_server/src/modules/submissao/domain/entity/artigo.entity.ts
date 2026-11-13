@@ -10,6 +10,7 @@ export interface ArtigoProps {
   autorId: string;
   editorId?: string;
   manuscrito: ManuscritoValueObject;
+  manuscritoIdentificado?: ManuscritoValueObject;
   status: StatusArtigoValueObject;
   revisoresIds: string[];
   revisoes: RevisaoEntity[];
@@ -26,6 +27,7 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
       resumo: string;
       autorId: string;
       manuscrito: ManuscritoValueObject;
+      manuscritoIdentificado?: ManuscritoValueObject;
     },
     id?: string,
   ): ArtigoEntity {
@@ -39,7 +41,7 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
       throw new Error('O artigo deve ter um autor.');
     }
     if (!props.manuscrito) {
-      throw new Error('O artigo deve ter um manuscrito.');
+      throw new Error('O artigo deve ter um manuscrito anonimizado.');
     }
 
     return new ArtigoEntity(
@@ -82,6 +84,10 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
     return this.props.manuscrito;
   }
 
+  get manuscritoIdentificado(): ManuscritoValueObject | undefined {
+    return this.props.manuscritoIdentificado;
+  }
+
   get status(): StatusArtigoValueObject {
     return this.props.status;
   }
@@ -98,9 +104,10 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
     titulo: string;
     resumo: string;
     manuscrito?: ManuscritoValueObject;
+    manuscritoIdentificado?: ManuscritoValueObject;
   }): void {
-    if (this.props.status.isAceito() || this.props.status.isRejeitado()) {
-      throw new Error('Não é possível alterar um artigo já decidido.');
+    if (this.props.status.isAceito() || this.props.status.isRejeitado() || this.props.status.isPublicado()) {
+      throw new Error('Não é possível alterar um artigo já decidido ou publicado.');
     }
     if (!props.titulo || props.titulo.trim().length === 0) {
       throw new Error('O artigo deve ter um título.');
@@ -113,6 +120,9 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
     this.props.resumo = props.resumo;
     if (props.manuscrito) {
       this.props.manuscrito = props.manuscrito;
+    }
+    if (props.manuscritoIdentificado) {
+      this.props.manuscritoIdentificado = props.manuscritoIdentificado;
     }
   }
 
@@ -134,8 +144,11 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
   }
 
   public atribuirRevisor(revisorId: string): void {
-    if (this.props.status.isAceito() || this.props.status.isRejeitado()) {
-      throw new Error('Não é possível atribuir revisores a um artigo já decidido.');
+    if (this.props.status.isAceito() || this.props.status.isRejeitado() || this.props.status.isPublicado()) {
+      throw new Error('Não é possível atribuir revisores a um artigo já decidido ou publicado.');
+    }
+    if (revisorId === this.props.autorId) {
+      throw new Error('Conflito de interesse: o autor não pode ser atribuído como revisor.');
     }
     if (!this.props.revisoresIds.includes(revisorId)) {
       this.props.revisoresIds.push(revisorId);
@@ -146,6 +159,9 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
   }
 
   public desatribuirRevisor(revisorId: string): void {
+    if (this.props.status.isPublicado()) {
+      throw new Error('Não é possível desatribuir revisor de um artigo já publicado.');
+    }
     const temRevisaoSubmetida = this.props.revisoes.some((r) => r.revisorId === revisorId);
     if (temRevisaoSubmetida) {
       throw new Error('Não é possível desatribuir um revisor que já submeteu uma avaliação.');
@@ -159,8 +175,8 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
   }
 
   public adicionarRevisao(revisao: RevisaoEntity): void {
-    if (this.props.status.isAceito() || this.props.status.isRejeitado()) {
-      throw new Error('Não é possível adicionar ou alterar revisões de um artigo já decidido.');
+    if (this.props.status.isAceito() || this.props.status.isRejeitado() || this.props.status.isPublicado()) {
+      throw new Error('Não é possível adicionar ou alterar revisões de um artigo já decidido ou publicado.');
     }
     if (!this.props.revisoresIds.includes(revisao.revisorId)) {
       throw new Error('O revisor deve ser atribuído ao artigo antes de revisar.');
@@ -174,6 +190,9 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
   }
 
   public decidirStatus(statusFinal: StatusArtigoEnum.ACEITO | StatusArtigoEnum.REJEITADO): void {
+    if (this.props.status.isPublicado()) {
+      throw new Error('Não é possível alterar o veredito de um artigo já publicado.');
+    }
     if (this.props.revisoes.length === 0) {
       throw new Error('Não é possível decidir o status sem nenhuma revisão.');
     }
@@ -185,5 +204,16 @@ export class ArtigoEntity extends Entity<ArtigoProps> {
       statusFinal === StatusArtigoEnum.ACEITO
         ? StatusArtigoValueObject.aceito()
         : StatusArtigoValueObject.rejeitado();
+  }
+
+  /**
+   * Transiciona o artigo ACEITO para PUBLICADO, habilitando o Reveal da autoria
+   * após o encerramento do ciclo de Double-Blind Review.
+   */
+  public publicar(): void {
+    if (!this.props.status.isAceito()) {
+      throw new Error('Apenas artigos com status ACEITO podem ser publicados.');
+    }
+    this.props.status = StatusArtigoValueObject.publicado();
   }
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '../../services/api';
 import Link from 'next/link';
 import { useProfile } from '../../contexts/ProfileContext';
+import PdfDropzone from '../../components/PdfDropzone';
 
 export default function SubmeterArtigo() {
   const router = useRouter();
@@ -16,9 +17,8 @@ export default function SubmeterArtigo() {
     titulo: '',
     resumo: '',
   });
-  const [arquivoPdf, setArquivoPdf] = useState<File | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [arquivoAnonimizado, setArquivoAnonimizado] = useState<File | null>(null);
+  const [arquivoIdentificado, setArquivoIdentificado] = useState<File | null>(null);
 
   useEffect(() => {
     if (role && role !== 'AUTOR') {
@@ -26,24 +26,14 @@ export default function SubmeterArtigo() {
     }
   }, [role, router]);
 
-  useEffect(() => {
-    if (arquivoPdf) {
-      const url = URL.createObjectURL(arquivoPdf);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [arquivoPdf]);
-
   if (role !== 'AUTOR') {
     return null;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!arquivoPdf) {
-      setErro('Por favor, anexe o manuscrito em PDF.');
+    if (!arquivoAnonimizado) {
+      setErro('Por favor, anexe o manuscrito anonimizado em PDF para os revisores.');
       return;
     }
 
@@ -51,16 +41,19 @@ export default function SubmeterArtigo() {
     setErro(null);
 
     try {
-      const urlSimulada = `https://exemplo.com/uploads/manuscrito_simulado_${Date.now()}.pdf`;
-
-      const idAutorFicticio = userId;
+      const uploadAnon = await api.uploadPdf(arquivoAnonimizado, 'anonimizado');
+      const uploadIdent = arquivoIdentificado
+        ? await api.uploadPdf(arquivoIdentificado, 'identificado')
+        : null;
 
       await api.submeterArtigo({
         titulo: dadosFormulario.titulo,
         resumo: dadosFormulario.resumo,
-        autorId: idAutorFicticio,
-        nomeArquivoManuscrito: arquivoPdf.name,
-        urlManuscrito: urlSimulada,
+        autorId: userId,
+        nomeArquivoManuscrito: uploadAnon.nomeArquivo,
+        urlManuscrito: uploadAnon.url,
+        nomeArquivoIdentificado: uploadIdent?.nomeArquivo,
+        urlManuscritoIdentificado: uploadIdent?.url,
       });
 
       window.location.href = '/';
@@ -74,19 +67,32 @@ export default function SubmeterArtigo() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-2xl mx-auto">
         <header className="mb-8 flex flex-col sm:flex-row sm:items-center gap-4">
-          <Link href="/" title="Voltar ao Dashboard" className="group flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all shadow-sm shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <Link
+            href="/"
+            title="Voltar ao Dashboard"
+            className="group flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all shadow-sm shrink-0"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 group-hover:-translate-x-0.5 transition-transform"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           </Link>
           <div>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Nova Submissão</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Submissão compatível com Double-Blind Review e limpeza automática de metadados PDF.
+            </p>
           </div>
         </header>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
           {erro && (
-            <div className="mb-6 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200 text-sm">
+            <div className="mb-6 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200 text-sm" role="alert">
               {erro}
             </div>
           )}
@@ -94,10 +100,11 @@ export default function SubmeterArtigo() {
           <div className="space-y-6">
             <div>
               <label htmlFor="titulo" className="block text-sm font-medium text-gray-700 mb-1">
-                Título do Artigo *
+                Título do Artigo <span aria-hidden="true">*</span>
               </label>
               <input
                 id="titulo"
+                name="titulo"
                 type="text"
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none text-black"
@@ -108,10 +115,11 @@ export default function SubmeterArtigo() {
 
             <div>
               <label htmlFor="resumo" className="block text-sm font-medium text-gray-700 mb-1">
-                Resumo (Abstract) *
+                Resumo (Abstract) <span aria-hidden="true">*</span>
               </label>
               <textarea
                 id="resumo"
+                name="resumo"
                 required
                 rows={5}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none resize-y text-black"
@@ -120,115 +128,39 @@ export default function SubmeterArtigo() {
               />
             </div>
 
-            <div>
-              <label htmlFor="pdf" className="block text-sm font-medium text-gray-700 mb-1">
-                Manuscrito (Apenas PDF) *
-              </label>
-              <div 
-                className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50'} border-dashed rounded-lg hover:border-gray-400 transition-colors`}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsDragging(true);
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsDragging(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsDragging(false);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsDragging(false);
-                  const file = e.dataTransfer.files?.[0];
-                  if (file && file.type === 'application/pdf') {
-                    setArquivoPdf(file);
-                    setErro(null);
-                  } else if (file) {
-                    setErro('Por favor, envie apenas arquivos PDF.');
-                  }
-                }}
-              >
-                <div className="space-y-1 text-center">
-                  {!arquivoPdf ? (
-                    <>
-                      <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <div className="flex text-sm text-gray-600 justify-center">
-                        <label htmlFor="file-upload" className="relative cursor-pointer bg-transparent rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500 px-1">
-                          <span>Selecione um arquivo</span>
-                          <input
-                            id="file-upload"
-                            name="file-upload"
-                            type="file"
-                            className="sr-only"
-                            accept=".pdf,application/pdf"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                setArquivoPdf(file);
-                                setErro(null);
-                              }
-                            }}
-                          />
-                        </label>
-                        <p className="pl-1">ou arraste e solte</p>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        PDF de até 10MB
-                      </p>
-                    </>
-                  ) : (
-                    <div className="w-full flex flex-col items-center">
-                      <div className="flex items-center justify-between w-full mb-3 px-2">
-                        <p className="text-sm font-semibold text-green-600">
-                          Selecionado: {arquivoPdf.name}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setArquivoPdf(null);
-                            const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-                            if (fileInput) fileInput.value = '';
-                          }}
-                          className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-700 border border-red-200 rounded-full hover:bg-red-50 transition-colors shrink-0"
-                          title="Remover PDF"
-                          aria-label="Remover PDF"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                      {previewUrl && (
-                        <iframe
-                          src={previewUrl}
-                          className="w-full h-[500px] border border-gray-300 rounded-md"
-                          title="Pré-visualização do PDF"
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <PdfDropzone
+              id="pdf-anonimizado"
+              label="Manuscrito Anonimizado (PDF Cego)"
+              helperText="Versão sem nomes ou afiliações no texto. O servidor limpa automaticamente os metadados (Author/Creator) via pdf-lib antes de disponibilizar aos revisores."
+              badgeText="Visível aos Revisores (Metadados Limpos)"
+              badgeClassName="bg-emerald-50 text-emerald-700 border-emerald-200"
+              file={arquivoAnonimizado}
+              onFileChange={setArquivoAnonimizado}
+              onError={setErro}
+              required
+            />
+
+            <PdfDropzone
+              id="pdf-identificado"
+              label="Folha de Rosto / Versão Identificada (PDF)"
+              helperText="Opcional: contém autores, afiliações e agradecimentos. Nunca é enviada aos revisores durante a avaliação."
+              badgeText="Visível apenas ao Editor"
+              badgeClassName="bg-purple-50 text-purple-700 border-purple-200"
+              file={arquivoIdentificado}
+              onFileChange={setArquivoIdentificado}
+              onError={setErro}
+            />
           </div>
 
           <div className="mt-8 flex justify-end">
             <button
               type="submit"
               disabled={carregando}
-              className={`bg-black text-white px-6 py-2.5 rounded-lg font-medium transition-colors ${carregando ? 'opacity-70 cursor-not-allowed' : 'hover:bg-gray-800'}`}
+              className={`bg-black text-white px-6 py-2.5 rounded-lg font-medium transition-colors ${
+                carregando ? 'opacity-70 cursor-not-allowed' : 'hover:bg-gray-800'
+              }`}
             >
-              {carregando ? 'Submetendo...' : 'Submeter Artigo'}
+              {carregando ? 'Enviando e anonimizando PDF...' : 'Submeter Artigo'}
             </button>
           </div>
         </form>

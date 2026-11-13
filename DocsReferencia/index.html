@@ -646,24 +646,56 @@
       overflow: hidden;
     }
 
+    .ide-code-stack {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      background: var(--ide-bg);
+      min-height: 160px;
+    }
+
+    .ide-highlight-layer,
     .ide-textarea {
+      grid-area: 1 / 1;
       display: block;
       width: 100%;
       min-height: 160px;
-      background: var(--ide-bg);
-      color: var(--ide-text);
+      margin: 0;
       border: none;
       padding: 0.85rem 1rem;
       font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, Monaco, monospace;
       font-size: 13.5px;
       line-height: 21.6px;
+      font-variant-ligatures: none;
+      letter-spacing: 0px;
       tab-size: 2;
       white-space: pre;
       overflow-wrap: normal;
       word-break: normal;
+      box-sizing: border-box;
+    }
+
+    .ide-highlight-layer {
+      background: transparent;
+      color: var(--ide-text);
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .ide-textarea {
+      background: transparent;
+      color: transparent;
+      caret-color: #f5e0dc;
       overflow-x: auto;
       overflow-y: hidden;
       resize: none;
+      z-index: 2;
+    }
+
+    .ide-textarea::selection {
+      background: rgba(137, 180, 250, 0.28);
+      color: transparent;
     }
 
     .ide-textarea:focus {
@@ -673,6 +705,19 @@
     .ide-textarea::placeholder {
       color: #585b70;
     }
+
+    /* Cores de Sintaxe Estilo IDE (VS Code Dark / Catppuccin Mocha) */
+    .tok-comment  { color: #6c7086; font-style: italic; }
+    .tok-string   { color: #a6e3a1; }
+    .tok-keyword  { color: #cba6f7; font-weight: 600; }
+    .tok-boolean  { color: #fab387; font-weight: 600; }
+    .tok-number   { color: #fab387; }
+    .tok-type     { color: #f9e2af; }
+    .tok-function { color: #89b4fa; }
+    .tok-property { color: #94e2d5; }
+    .tok-operator { color: #89dceb; }
+    .tok-punct    { color: #9399b2; }
+    .tok-decorator{ color: #f5c2e7; }
 
     /* Botão Flutuante (+) Sempre no Canto */
     .fab-add {
@@ -1193,12 +1238,117 @@
       });
     }
 
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    const CODE_KEYWORDS = new Set([
+      'import', 'export', 'from', 'default', 'async', 'await', 'function',
+      'const', 'let', 'var', 'if', 'else', 'for', 'while', 'do', 'switch',
+      'case', 'break', 'continue', 'return', 'try', 'catch', 'finally',
+      'throw', 'new', 'class', 'extends', 'implements', 'interface', 'type',
+      'enum', 'public', 'private', 'protected', 'readonly', 'static',
+      'typeof', 'instanceof', 'in', 'of', 'as', 'void', 'delete', 'yield',
+      'select', 'where', 'insert', 'into', 'values', 'update', 'set',
+      'join', 'left', 'right', 'inner', 'on', 'group', 'by', 'order',
+      'limit', 'create', 'table', 'alter', 'drop', 'model', 'datasource',
+      'generator', 'echo', 'fi', 'then', 'elif', 'done'
+    ]);
+
+    const CODE_BOOLEANS = new Set([
+      'true', 'false', 'null', 'undefined', 'NaN', 'Infinity', 'this', 'super'
+    ]);
+
+    const CODE_TYPES = new Set([
+      'string', 'number', 'boolean', 'any', 'unknown', 'never', 'object',
+      'Promise', 'Array', 'Record', 'Partial', 'Omit', 'Pick', 'Map', 'Set',
+      'Date', 'Error', 'Int', 'String', 'Boolean', 'DateTime', 'Float', 'Json'
+    ]);
+
+    const TOKEN_REGEX = new RegExp(
+      [
+        '(\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*|#[^\\n]*|--[^\\n]*)', // 1: Comentários
+        '(`(?:\\\\[\\s\\S]|[^\\\\`])*`|\'(?:\\\\.|[^\\\\\'\\n])*\'|"(?:\\\\.|[^\\\\"\\n])*")', // 2: Strings
+        '(@[a-zA-Z_][a-zA-Z0-9_]*)', // 3: Decorators (@Injectable, @id, etc.)
+        '\\b(0x[0-9a-fA-F]+|\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)\\b', // 4: Números
+        '\\b([A-Za-z_$][A-Za-z0-9_$]*)\\b', // 5: Identificadores / Palavras-chave
+        '(===|!==|==|!=|<=|>=|=>|&&|\\|\\||\\?\\?|\\+\\+|--|[+\\-*/%=<>!&|^~?:]+)', // 6: Operadores
+        '([{}()[\\].,;])' // 7: Pontuação
+      ].join('|'),
+      'g'
+    );
+
+    function highlightCodeSyntax(rawCode) {
+      if (!rawCode) return '';
+      let result = '';
+      let lastIndex = 0;
+      TOKEN_REGEX.lastIndex = 0;
+      let match;
+
+      while ((match = TOKEN_REGEX.exec(rawCode)) !== null) {
+        if (match.index > lastIndex) {
+          result += escapeHtml(rawCode.slice(lastIndex, match.index));
+        }
+
+        const full = match[0];
+        const escaped = escapeHtml(full);
+
+        if (match[1] !== undefined) {
+          result += `<span class="tok-comment">${escaped}</span>`;
+        } else if (match[2] !== undefined) {
+          result += `<span class="tok-string">${escaped}</span>`;
+        } else if (match[3] !== undefined) {
+          result += `<span class="tok-decorator">${escaped}</span>`;
+        } else if (match[4] !== undefined) {
+          result += `<span class="tok-number">${escaped}</span>`;
+        } else if (match[5] !== undefined) {
+          const after = rawCode.slice(TOKEN_REGEX.lastIndex);
+          const lower = full.toLowerCase();
+          if (/^\s*:/.test(after) && !CODE_KEYWORDS.has(full)) {
+            result += `<span class="tok-property">${escaped}</span>`;
+          } else if (CODE_KEYWORDS.has(full) || CODE_KEYWORDS.has(lower)) {
+            result += `<span class="tok-keyword">${escaped}</span>`;
+          } else if (CODE_BOOLEANS.has(full)) {
+            result += `<span class="tok-boolean">${escaped}</span>`;
+          } else if (CODE_TYPES.has(full) || /^[A-Z]/.test(full)) {
+            result += `<span class="tok-type">${escaped}</span>`;
+          } else if (/^\s*\(/.test(after)) {
+            result += `<span class="tok-function">${escaped}</span>`;
+          } else {
+            result += escaped;
+          }
+        } else if (match[6] !== undefined) {
+          result += `<span class="tok-operator">${escaped}</span>`;
+        } else if (match[7] !== undefined) {
+          result += `<span class="tok-punct">${escaped}</span>`;
+        } else {
+          result += escaped;
+        }
+
+        lastIndex = TOKEN_REGEX.lastIndex;
+      }
+
+      if (lastIndex < rawCode.length) {
+        result += escapeHtml(rawCode.slice(lastIndex));
+      }
+
+      // Garante espaço ao final se terminar com quebra de linha para manter altura idêntica ao textarea
+      if (rawCode.endsWith('\n')) {
+        result += ' ';
+      }
+
+      return result;
+    }
+
     function autoResizeTextArea(textarea) {
       textarea.style.height = 'auto';
       textarea.style.height = Math.max(105, textarea.scrollHeight + 4) + 'px';
     }
 
-    function updateCodeEditorSize(codeArea, gutter) {
+    function updateCodeEditorSize(codeArea, gutter, highlightLayer) {
       const raw = codeArea.value || '';
       const linesCount = Math.max(1, raw.split('\n').length);
       let nums = '';
@@ -1206,6 +1356,10 @@
         nums += i + '\n';
       }
       gutter.textContent = nums;
+
+      if (highlightLayer) {
+        highlightLayer.innerHTML = highlightCodeSyntax(raw);
+      }
 
       // Calcula a altura exata para mostrar TODAS as linhas (150, 500, etc.) sem cortar na linha 27
       codeArea.style.height = 'auto';
@@ -1215,6 +1369,9 @@
       const finalHeight = Math.max(160, calculatedByLines, codeArea.scrollHeight + 12);
       codeArea.style.height = finalHeight + 'px';
       gutter.style.minHeight = finalHeight + 'px';
+      if (highlightLayer) {
+        highlightLayer.style.height = finalHeight + 'px';
+      }
     }
 
     function renderTopics() {
@@ -1442,6 +1599,13 @@
           gutter.className = 'ide-line-numbers';
           gutter.textContent = '1\n';
 
+          const codeStack = document.createElement('div');
+          codeStack.className = 'ide-code-stack';
+
+          const highlightLayer = document.createElement('pre');
+          highlightLayer.className = 'ide-highlight-layer';
+          highlightLayer.setAttribute('aria-hidden', 'true');
+
           const codeArea = document.createElement('textarea');
           codeArea.className = 'ide-textarea';
           codeArea.setAttribute('wrap', 'off');
@@ -1451,8 +1615,13 @@
 
           codeArea.addEventListener('input', () => {
             item.code = codeArea.value;
-            updateCodeEditorSize(codeArea, gutter);
+            updateCodeEditorSize(codeArea, gutter, highlightLayer);
             triggerSync();
+          });
+
+          codeArea.addEventListener('scroll', () => {
+            highlightLayer.scrollLeft = codeArea.scrollLeft;
+            highlightLayer.scrollTop = codeArea.scrollTop;
           });
 
           // Suporte à tecla Tab igual a uma IDE
@@ -1464,7 +1633,7 @@
               codeArea.value = codeArea.value.substring(0, start) + '  ' + codeArea.value.substring(end);
               codeArea.selectionStart = codeArea.selectionEnd = start + 2;
               item.code = codeArea.value;
-              updateCodeEditorSize(codeArea, gutter);
+              updateCodeEditorSize(codeArea, gutter, highlightLayer);
               triggerSync();
             }
           });
@@ -1472,6 +1641,7 @@
           langSelect.addEventListener('change', () => {
             item.language = langSelect.value;
             filenameSpan.textContent = `ia-suggestion.${fileExtMap[item.language] || 'ts'}`;
+            updateCodeEditorSize(codeArea, gutter, highlightLayer);
             triggerSync();
           });
 
@@ -1481,14 +1651,16 @@
             setTimeout(() => (copyCodeBtn.textContent = 'Copiar Código'), 1500);
           });
 
+          codeStack.appendChild(highlightLayer);
+          codeStack.appendChild(codeArea);
           ideBody.appendChild(gutter);
-          ideBody.appendChild(codeArea);
+          ideBody.appendChild(codeStack);
           ideWrapper.appendChild(ideTopbar);
           ideWrapper.appendChild(ideBody);
           step3.appendChild(ideWrapper);
           body.appendChild(step3);
 
-          codeRefs = { codeArea, gutter };
+          codeRefs = { codeArea, gutter, highlightLayer };
         }
 
         // 4. Reflexão e Crítica do Aluno
@@ -1525,7 +1697,7 @@
         autoResizeTextArea(responseArea);
         autoResizeTextArea(reflectionArea);
         if (codeRefs) {
-          updateCodeEditorSize(codeRefs.codeArea, codeRefs.gutter);
+          updateCodeEditorSize(codeRefs.codeArea, codeRefs.gutter, codeRefs.highlightLayer);
         }
       });
     }

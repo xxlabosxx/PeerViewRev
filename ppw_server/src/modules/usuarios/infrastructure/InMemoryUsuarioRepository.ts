@@ -16,15 +16,29 @@ export class InMemoryUsuarioRepository implements UsuarioRepository {
     }
   }
 
-  async criar(nome: string, senha: string, papel: 'AUTOR' | 'EDITOR' | 'REVISOR'): Promise<Usuario> {
+  async criar(
+    nome: string,
+    senha: string,
+    papel: 'AUTOR' | 'EDITOR' | 'REVISOR',
+    email: string,
+    instituicao: string,
+  ): Promise<Usuario> {
     const id = randomUUID();
-    const novoUsuario = new Usuario(id, nome, senha, papel);
+    const novoUsuario = new Usuario(id, nome, senha, papel, email, instituicao);
     await this.salvar(novoUsuario);
     return novoUsuario;
   }
 
+  async buscarPorId(id: string): Promise<Usuario | null> {
+    return this.usuarios.find((u) => u.id === id) || null;
+  }
+
   async buscarPorNome(nome: string): Promise<Usuario | null> {
-    return this.usuarios.find((u) => u.nome.toLowerCase() === nome.toLowerCase()) || null;
+    return this.usuarios.find((u) => u.nome.toLowerCase() === nome.trim().toLowerCase()) || null;
+  }
+
+  async buscarPorEmail(email: string): Promise<Usuario | null> {
+    return this.usuarios.find((u) => u.email.toLowerCase() === email.trim().toLowerCase()) || null;
   }
 
   async listarPorPapel(papel: 'AUTOR' | 'EDITOR' | 'REVISOR'): Promise<Usuario[]> {

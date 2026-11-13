@@ -1,36 +1,111 @@
 export const API_URL = 'http://localhost:3000';
 
+export interface RevisaoItem {
+  id: string;
+  revisorId: string;
+  revisorNome?: string;
+  artigoId: string;
+  nota: number;
+  comentarios: string;
+  estaAprovado: boolean;
+}
+
+export interface RevisorDetalhe {
+  id: string;
+  nome: string;
+  instituicao?: string;
+}
+
+export interface UsuarioItem {
+  id: string;
+  nome: string;
+  email: string;
+  instituicao: string;
+  papel: 'AUTOR' | 'EDITOR' | 'REVISOR';
+}
+
 export interface Artigo {
   id: string;
   titulo: string;
   resumo: string;
   nomeArquivoManuscrito: string;
   urlManuscrito: string;
+  nomeArquivoIdentificado?: string;
+  urlManuscritoIdentificado?: string;
   status: string;
   autorId: string;
+  autorNome?: string;
+  autorInstituicao?: string;
   editorId?: string;
+  editorNome?: string;
   revisoresIds: string[];
-  revisoes: any[];
+  revisoresDetalhes?: RevisorDetalhe[];
+  revisoes: RevisaoItem[];
+  blindReviewAtivo?: boolean;
+}
+
+function getViewerHeaders(viewer?: { userId?: string; role?: string }): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const userId =
+    viewer?.userId ??
+    (typeof window !== 'undefined' ? localStorage.getItem('@App:userId') || '' : '');
+  const role =
+    viewer?.role ??
+    (typeof window !== 'undefined' ? localStorage.getItem('@App:role') || '' : '');
+
+  if (userId) headers['x-user-id'] = userId;
+  if (role) headers['x-user-role'] = role;
+  return headers;
+}
+
+async function extractErrorMessage(response: Response, fallback: string): Promise<string> {
+  const errorData = await response.json().catch(() => ({}));
+  if (Array.isArray(errorData.message)) {
+    return errorData.message.join(', ');
+  }
+  return errorData.message || fallback;
 }
 
 export const api = {
-  getArtigos: async (): Promise<Artigo[]> => {
-    const response = await fetch(`${API_URL}/submissoes/artigos`, {
-      cache: 'no-store',
+  uploadPdf: async (
+    file: File,
+    tipo: 'anonimizado' | 'identificado',
+  ): Promise<{ nomeArquivo: string; url: string; tipo: string; metadadosLimpos: boolean }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('tipo', tipo);
+
+    const response = await fetch(`${API_URL}/submissoes/upload-pdf`, {
+      method: 'POST',
+      body: formData,
     });
     if (!response.ok) {
-      throw new Error('Falha ao buscar artigos');
+      throw new Error(await extractErrorMessage(response, 'Falha ao enviar PDF'));
     }
     return response.json();
   },
 
-  getArtigoPorId: async (id: string): Promise<Artigo> => {
-    const response = await fetch(`${API_URL}/submissoes/artigo/${id}`, {
+  getArtigos: async (viewer?: { userId?: string; role?: string }): Promise<Artigo[]> => {
+    const response = await fetch(`${API_URL}/submissoes/artigos`, {
       cache: 'no-store',
+      headers: getViewerHeaders(viewer),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Falha ao buscar artigo');
+      throw new Error(await extractErrorMessage(response, 'Falha ao buscar artigos'));
+    }
+    return response.json();
+  },
+
+  getArtigoPorId: async (
+    id: string,
+    viewer?: { userId?: string; role?: string },
+  ): Promise<Artigo> => {
+    const response = await fetch(`${API_URL}/submissoes/artigo/${id}`, {
+      cache: 'no-store',
+      headers: getViewerHeaders(viewer),
+    });
+    if (!response.ok) {
+      throw new Error(await extractErrorMessage(response, 'Falha ao buscar artigo'));
     }
     return response.json();
   },
@@ -41,18 +116,19 @@ export const api = {
     autorId: string;
     nomeArquivoManuscrito: string;
     urlManuscrito: string;
+    nomeArquivoIdentificado?: string;
+    urlManuscritoIdentificado?: string;
   }) => {
     const response = await fetch(`${API_URL}/submissoes/artigo`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getViewerHeaders(),
       },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const msg = Array.isArray(errorData.message) ? errorData.message.join(', ') : errorData.message;
-      throw new Error(msg || 'Falha ao submeter artigo');
+      throw new Error(await extractErrorMessage(response, 'Falha ao submeter artigo'));
     }
     return response.json();
   },
@@ -64,19 +140,20 @@ export const api = {
       resumo: string;
       nomeArquivoManuscrito?: string;
       urlManuscrito?: string;
+      nomeArquivoIdentificado?: string;
+      urlManuscritoIdentificado?: string;
     },
   ) => {
     const response = await fetch(`${API_URL}/submissoes/artigo/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        ...getViewerHeaders(),
       },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const msg = Array.isArray(errorData.message) ? errorData.message.join(', ') : errorData.message;
-      throw new Error(msg || 'Falha ao alterar artigo');
+      throw new Error(await extractErrorMessage(response, 'Falha ao alterar artigo'));
     }
     return response.json();
   },
@@ -84,10 +161,10 @@ export const api = {
   excluirArtigo: async (id: string) => {
     const response = await fetch(`${API_URL}/submissoes/artigo/${id}`, {
       method: 'DELETE',
+      headers: getViewerHeaders(),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Falha ao excluir artigo');
+      throw new Error(await extractErrorMessage(response, 'Falha ao excluir artigo'));
     }
     return response.json();
   },
@@ -95,12 +172,11 @@ export const api = {
   assumirArtigo: async (artigoId: string, editorId: string) => {
     const response = await fetch(`${API_URL}/submissoes/artigo/${artigoId}/assumir`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getViewerHeaders() },
       body: JSON.stringify({ editorId }),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Falha ao assumir artigo');
+      throw new Error(await extractErrorMessage(response, 'Falha ao assumir artigo'));
     }
     return response.json();
   },
@@ -108,11 +184,10 @@ export const api = {
   abandonarArtigo: async (artigoId: string) => {
     const response = await fetch(`${API_URL}/submissoes/artigo/${artigoId}/abandonar`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getViewerHeaders() },
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Falha ao abandonar artigo');
+      throw new Error(await extractErrorMessage(response, 'Falha ao abandonar artigo'));
     }
     return response.json();
   },
@@ -120,11 +195,11 @@ export const api = {
   atribuirRevisor: async (data: { artigoId: string; revisorId: string }) => {
     const response = await fetch(`${API_URL}/submissoes/atribuir-revisor`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getViewerHeaders() },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
-      throw new Error('Falha ao atribuir revisor');
+      throw new Error(await extractErrorMessage(response, 'Falha ao atribuir revisor'));
     }
     return response.json();
   },
@@ -132,16 +207,14 @@ export const api = {
   desatribuirRevisor: async (artigoId: string, revisorId: string) => {
     const response = await fetch(`${API_URL}/submissoes/artigo/${artigoId}/desatribuir-revisor`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getViewerHeaders() },
       body: JSON.stringify({ revisorId }),
     });
     if (!response.ok) {
-      throw new Error('Falha ao desatribuir revisor');
+      throw new Error(await extractErrorMessage(response, 'Falha ao desatribuir revisor'));
     }
     return response.json();
   },
-
-
 
   submeterRevisao: async (data: {
     artigoId: string;
@@ -154,11 +227,12 @@ export const api = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getViewerHeaders(),
       },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
-      throw new Error('Falha ao submeter revisão');
+      throw new Error(await extractErrorMessage(response, 'Falha ao submeter revisão'));
     }
     return response.json();
   },
@@ -166,53 +240,72 @@ export const api = {
   decidirStatus: async (artigoId: string, status: 'ACEITO' | 'REJEITADO') => {
     const response = await fetch(`${API_URL}/submissoes/artigo/${artigoId}/decidir`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
+      headers: { 'Content-Type': 'application/json', ...getViewerHeaders() },
+      body: JSON.stringify({ status }),
     });
     if (!response.ok) {
-      throw new Error('Falha ao decidir status do artigo');
+      throw new Error(await extractErrorMessage(response, 'Falha ao decidir status do artigo'));
     }
     return response.json();
   },
 
-  cadastrarUsuario: async (data: any) => {
+  publicarArtigo: async (artigoId: string) => {
+    const response = await fetch(`${API_URL}/submissoes/artigo/${artigoId}/publicar`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...getViewerHeaders() },
+    });
+    if (!response.ok) {
+      throw new Error(await extractErrorMessage(response, 'Falha ao publicar artigo'));
+    }
+    return response.json();
+  },
+
+  cadastrarUsuario: async (data: {
+    nome: string;
+    email: string;
+    instituicao: string;
+    senha: string;
+    papel: string;
+  }) => {
     const response = await fetch(`${API_URL}/usuarios/cadastro`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Falha ao cadastrar');
+      throw new Error(await extractErrorMessage(response, 'Falha ao cadastrar'));
     }
     return response.json();
   },
 
-  loginUsuario: async (data: any) => {
+  loginUsuario: async (data: { nome: string; senha: string }) => {
     const response = await fetch(`${API_URL}/usuarios/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Usuário ou senha incorretos');
+      throw new Error(await extractErrorMessage(response, 'Usuário ou senha incorretos'));
     }
     return response.json();
   },
 
-  getRevisores: async () => {
-    const response = await fetch(`${API_URL}/usuarios/revisores`);
+  getRevisores: async (): Promise<UsuarioItem[]> => {
+    const response = await fetch(`${API_URL}/usuarios/revisores`, {
+      cache: 'no-store',
+    });
     if (!response.ok) {
-      throw new Error('Falha ao buscar revisores');
+      throw new Error(await extractErrorMessage(response, 'Falha ao buscar revisores'));
     }
     return response.json();
   },
 
-  getUsuarios: async () => {
-    const response = await fetch(`${API_URL}/usuarios`);
+  getUsuarios: async (): Promise<UsuarioItem[]> => {
+    const response = await fetch(`${API_URL}/usuarios`, {
+      cache: 'no-store',
+    });
     if (!response.ok) {
-      throw new Error('Falha ao buscar usuários');
+      throw new Error(await extractErrorMessage(response, 'Falha ao buscar usuários'));
     }
     return response.json();
   },

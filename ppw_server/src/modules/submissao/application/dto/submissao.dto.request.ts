@@ -17,9 +17,17 @@ export class SubmeterArtigoRequest {
   @IsNotEmpty()
   nomeArquivoManuscrito: string;
 
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   @IsNotEmpty()
   urlManuscrito: string;
+
+  @IsOptional()
+  @IsString()
+  nomeArquivoIdentificado?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  urlManuscritoIdentificado?: string;
 }
 
 export class AlterarArtigoRequest {
@@ -36,8 +44,16 @@ export class AlterarArtigoRequest {
   nomeArquivoManuscrito?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   urlManuscrito?: string;
+
+  @IsOptional()
+  @IsString()
+  nomeArquivoIdentificado?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  urlManuscritoIdentificado?: string;
 }
 
 export class AssumirArtigoRequest {

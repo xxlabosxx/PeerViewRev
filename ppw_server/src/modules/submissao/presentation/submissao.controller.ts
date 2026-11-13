@@ -1,4 +1,21 @@
-import { Controller, Post, Body, Param, Get, Patch, Put, Delete, Inject } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Param,
+  Get,
+  Patch,
+  Put,
+  Delete,
+  Inject,
+  Headers,
+  UploadedFile,
+  UseInterceptors,
+  Req,
+  Res,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Request, Response } from 'express';
 import { SUBMETER_ARTIGO_USE_CASE } from '../application/use-case/write/submeter.artigo.use-case';
 import type { SubmeterArtigoUseCase } from '../application/use-case/write/submeter.artigo.use-case';
 import { ALTERAR_ARTIGO_USE_CASE } from '../application/use-case/write/alterar.artigo.use-case';
@@ -17,10 +34,13 @@ import { SUBMETER_REVISAO_USE_CASE } from '../application/use-case/write/submete
 import type { SubmeterRevisaoUseCase } from '../application/use-case/write/submeter.revisao.use-case';
 import { DECIDIR_STATUS_ARTIGO_USE_CASE } from '../application/use-case/write/decidir.status.artigo.use-case';
 import type { DecidirStatusArtigoUseCase } from '../application/use-case/write/decidir.status.artigo.use-case';
+import { PUBLICAR_ARTIGO_USE_CASE } from '../application/use-case/write/publicar.artigo.use-case';
+import type { PublicarArtigoUseCase } from '../application/use-case/write/publicar.artigo.use-case';
 import { BUSCAR_ARTIGOS_USE_CASE } from '../application/use-case/read/buscar.artigos.use-case';
 import type { BuscarArtigosUseCase } from '../application/use-case/read/buscar.artigos.use-case';
 import { BUSCAR_ARTIGO_POR_ID_USE_CASE } from '../application/use-case/read/buscar.artigo-por-id.use-case';
 import type { BuscarArtigoPorIdUseCase } from '../application/use-case/read/buscar.artigo-por-id.use-case';
+import { PdfSanitizerService } from '../infrastructure/pdf/pdf-sanitizer.service';
 import {
   SubmeterArtigoRequest,
   AlterarArtigoRequest,
@@ -52,11 +72,39 @@ export class SubmissaoController {
     private readonly submeterRevisaoUseCase: SubmeterRevisaoUseCase,
     @Inject(DECIDIR_STATUS_ARTIGO_USE_CASE)
     private readonly decidirStatusArtigoUseCase: DecidirStatusArtigoUseCase,
+    @Inject(PUBLICAR_ARTIGO_USE_CASE)
+    private readonly publicarArtigoUseCase: PublicarArtigoUseCase,
     @Inject(BUSCAR_ARTIGOS_USE_CASE)
     private readonly buscarArtigosUseCase: BuscarArtigosUseCase,
     @Inject(BUSCAR_ARTIGO_POR_ID_USE_CASE)
     private readonly buscarArtigoPorIdUseCase: BuscarArtigoPorIdUseCase,
+    private readonly pdfSanitizerService: PdfSanitizerService,
   ) {}
+
+  @Post('upload-pdf')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  async uploadPdf(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('tipo') tipo: string | undefined,
+    @Req() req: Request,
+  ) {
+    const tipoArquivo = tipo === 'identificado' ? 'identificado' : 'anonimizado';
+    const host = req.get('host') || 'localhost:3000';
+    const baseUrl = `${req.protocol || 'http'}://${host}`;
+    return await this.pdfSanitizerService.processarESalvarPdf(
+      file?.buffer,
+      file?.originalname || '',
+      tipoArquivo,
+      baseUrl,
+    );
+  }
+
+  @Get('arquivos/:filename')
+  async downloadPdf(@Param('filename') filename: string, @Res() res: Response) {
+    const filePath = await this.pdfSanitizerService.obterCaminhoArquivo(filename);
+    res.setHeader('Content-Type', 'application/pdf');
+    return res.sendFile(filePath);
+  }
 
   @Post('artigo')
   async submeterArtigo(@Body() dto: SubmeterArtigoRequest) {
@@ -64,13 +112,22 @@ export class SubmissaoController {
   }
 
   @Get('artigo/:id')
-  async getArtigoPorId(@Param('id') artigoId: string) {
-    return await this.buscarArtigoPorIdUseCase.execute(artigoId);
+  async getArtigoPorId(
+    @Param('id') artigoId: string,
+    @Headers('x-user-id') userId?: string,
+    @Headers('x-user-role') role?: string,
+  ) {
+    return await this.buscarArtigoPorIdUseCase.execute(artigoId, { userId, role });
   }
 
   @Put('artigo/:id')
-  async alterarArtigo(@Param('id') artigoId: string, @Body() dto: AlterarArtigoRequest) {
-    return await this.alterarArtigoUseCase.execute(artigoId, dto);
+  async alterarArtigo(
+    @Param('id') artigoId: string,
+    @Body() dto: AlterarArtigoRequest,
+    @Headers('x-user-id') userId?: string,
+    @Headers('x-user-role') role?: string,
+  ) {
+    return await this.alterarArtigoUseCase.execute(artigoId, dto, { userId, role });
   }
 
   @Delete('artigo/:id')
@@ -108,8 +165,16 @@ export class SubmissaoController {
     return await this.decidirStatusArtigoUseCase.execute(artigoId, body.status);
   }
 
+  @Patch('artigo/:id/publicar')
+  async publicarArtigo(@Param('id') artigoId: string) {
+    return await this.publicarArtigoUseCase.execute(artigoId);
+  }
+
   @Get('artigos')
-  async getTodosArtigos() {
-    return await this.buscarArtigosUseCase.execute();
+  async getTodosArtigos(
+    @Headers('x-user-id') userId?: string,
+    @Headers('x-user-role') role?: string,
+  ) {
+    return await this.buscarArtigosUseCase.execute({ userId, role });
   }
 }

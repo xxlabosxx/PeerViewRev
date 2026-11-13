@@ -1,17 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api, Artigo } from '../services/api';
+import { api, Artigo, RevisorDetalhe, UsuarioItem } from '../services/api';
 import { useProfile } from '../contexts/ProfileContext';
+
+function normalizarInstituicao(valor?: string): string {
+  return (valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
 
 export default function Dashboard() {
   const { role, userId } = useProfile();
   const [artigos, setArtigos] = useState<Artigo[]>([]);
-  const [revisores, setRevisores] = useState<{id: string, nome: string}[]>([]);
+  const [revisores, setRevisores] = useState<UsuarioItem[]>([]);
   const [carregando, setCarregando] = useState(true);
-
-  const [usuarios, setUsuarios] = useState<{id: string, nome: string, papel: string}[]>([]);
 
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedArtigoId, setSelectedArtigoId] = useState<string | null>(null);
@@ -29,53 +39,42 @@ export default function Dashboard() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    buscarUsuarios().then(() => {
-      buscarArtigos();
-    });
-  }, [role, userId]);
-
-  const buscarUsuarios = async () => {
+  const buscarRevisores = useCallback(async () => {
     try {
-      const data = await api.getUsuarios();
-      setUsuarios(data);
-      setRevisores(data.filter((u: any) => u.papel === 'REVISOR'));
+      const data = await api.getRevisores();
+      setRevisores(data);
     } catch (error) {
-      console.error('Erro ao buscar usuários:', error);
+      console.error('Erro ao buscar revisores:', error);
     }
-  };
+  }, []);
 
-  const buscarArtigos = async () => {
+  const buscarArtigos = useCallback(async () => {
     try {
-      let data = await api.getArtigos();
-      
-      if (role === 'AUTOR') {
-        data = data.filter(a => a.autorId === userId);
-      } else if (role === 'REVISOR') {
-        data = data.filter(a => a.revisoresIds && a.revisoresIds.includes(userId));
-      } else if (role === 'EDITOR') {
-        data = data;
-      } else {
-        data = [];
-      }
-      
+      const data = await api.getArtigos({ userId, role });
       setArtigos(data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao buscar artigos:', error);
+      setArtigos([]);
     } finally {
       setCarregando(false);
     }
-  };
+  }, [role, userId]);
 
-  const getNomeUsuario = (id: string) => {
-    const user = usuarios.find(u => u.id === id);
-    return user ? user.nome : 'Desconhecido';
-  };
-
-  const getEditorArtigo = (editorId?: string) => {
-    if (!editorId) return 'Nenhum (Pendente)';
-    return getNomeUsuario(editorId);
-  };
+  useEffect(() => {
+    let ativo = true;
+    const carregarDados = async () => {
+      if (role === 'EDITOR') {
+        await buscarRevisores();
+      } else if (ativo) {
+        setRevisores([]);
+      }
+      await buscarArtigos();
+    };
+    void carregarDados();
+    return () => {
+      ativo = false;
+    };
+  }, [role, buscarRevisores, buscarArtigos]);
 
   const showMessage = (msg: string, type: 'error' | 'success') => {
     if (type === 'error') {
@@ -92,8 +91,8 @@ export default function Dashboard() {
       await api.assumirArtigo(artigoId, userId);
       showMessage('Artigo assumido com sucesso!', 'success');
       buscarArtigos();
-    } catch (err: any) {
-      showMessage(err.message || 'Erro ao assumir artigo', 'error');
+    } catch (err: unknown) {
+      showMessage(getErrorMessage(err, 'Erro ao assumir artigo'), 'error');
     }
   };
 
@@ -102,8 +101,8 @@ export default function Dashboard() {
       await api.abandonarArtigo(artigoId);
       showMessage('Artigo abandonado!', 'success');
       buscarArtigos();
-    } catch (err: any) {
-      showMessage(err.message || 'Erro ao abandonar artigo', 'error');
+    } catch (err: unknown) {
+      showMessage(getErrorMessage(err, 'Erro ao abandonar artigo'), 'error');
     }
   };
 
@@ -112,8 +111,8 @@ export default function Dashboard() {
       await api.desatribuirRevisor(artigoId, revisorId);
       showMessage('Revisor desatribuído!', 'success');
       buscarArtigos();
-    } catch (err: any) {
-      showMessage(err.message || 'Erro ao desatribuir revisor', 'error');
+    } catch (err: unknown) {
+      showMessage(getErrorMessage(err, 'Erro ao desatribuir revisor'), 'error');
     }
   };
 
@@ -132,8 +131,8 @@ export default function Dashboard() {
       showMessage('Revisores atribuídos com sucesso!', 'success');
       setIsAssignModalOpen(false);
       buscarArtigos();
-    } catch (err: any) {
-      showMessage(err.message || 'Erro ao atribuir', 'error');
+    } catch (err: unknown) {
+      showMessage(getErrorMessage(err, 'Erro ao atribuir'), 'error');
     }
   };
 
@@ -150,8 +149,18 @@ export default function Dashboard() {
       showMessage('Status decidido com sucesso!', 'success');
       setIsDecideModalOpen(false);
       buscarArtigos();
-    } catch (err: any) {
-      showMessage(err.message || 'Erro ao decidir status', 'error');
+    } catch (err: unknown) {
+      showMessage(getErrorMessage(err, 'Erro ao decidir status'), 'error');
+    }
+  };
+
+  const handlePublicarArtigo = async (artigoId: string) => {
+    try {
+      await api.publicarArtigo(artigoId);
+      showMessage('Artigo publicado! Identidades reveladas.', 'success');
+      buscarArtigos();
+    } catch (err: unknown) {
+      showMessage(getErrorMessage(err, 'Erro ao publicar artigo'), 'error');
     }
   };
 
@@ -168,8 +177,8 @@ export default function Dashboard() {
       setIsDeleteModalOpen(false);
       setArtigoParaExcluir(null);
       buscarArtigos();
-    } catch (err: any) {
-      showMessage(err.message || 'Erro ao excluir artigo', 'error');
+    } catch (err: unknown) {
+      showMessage(getErrorMessage(err, 'Erro ao excluir artigo'), 'error');
     }
   };
 
@@ -203,8 +212,8 @@ export default function Dashboard() {
       showMessage('Revisão submetida com sucesso!', 'success');
       setIsReviewModalOpen(false);
       buscarArtigos();
-    } catch (err: any) {
-      showMessage(err.message || 'Erro ao submeter revisão', 'error');
+    } catch (err: unknown) {
+      showMessage(getErrorMessage(err, 'Erro ao submeter revisão'), 'error');
     }
   };
 
@@ -216,6 +225,8 @@ export default function Dashboard() {
         return <span className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-800 font-medium">Em Revisão</span>;
       case 'ACEITO':
         return <span className="px-3 py-1 text-sm rounded-full bg-green-100 text-green-800 font-medium">Aceito</span>;
+      case 'PUBLICADO':
+        return <span className="px-3 py-1 text-sm rounded-full bg-emerald-100 text-emerald-900 font-semibold border border-emerald-200">Publicado</span>;
       case 'REJEITADO':
         return <span className="px-3 py-1 text-sm rounded-full bg-red-100 text-red-800 font-medium">Rejeitado</span>;
       default:
@@ -258,54 +269,137 @@ export default function Dashboard() {
         ) : !artigos || artigos.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center shadow-sm">
             <h3 className="text-lg font-medium text-gray-900 mb-2">Não tem artigos disponíveis</h3>
-            <p className="text-gray-500">Ainda não existem artigos submetidos no sistema.</p>
+            <p className="text-gray-500">
+              {role === 'NEUTRO'
+                ? 'Faça login para submeter ou avaliar artigos. Apenas artigos publicados aparecem na vitrine pública.'
+                : 'Ainda não existem artigos disponíveis para o seu perfil.'}
+            </p>
           </div>
         ) : (
           <div className="grid gap-4">
             {artigos.map((artigo) => {
               const jaRevisadoPorMim = role === 'REVISOR' && artigo.revisoes.some(r => r.revisorId === userId);
+              const ehAutorDoArtigo = role === 'AUTOR' && artigo.autorId === userId;
+              const statusFinalOuPublicado =
+                artigo.status === 'ACEITO' ||
+                artigo.status === 'REJEITADO' ||
+                artigo.status === 'PUBLICADO';
 
               return (
               <div key={artigo.id} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row items-start justify-between gap-4">
                 <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">{artigo.titulo}</h2>
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <h2 className="text-xl font-semibold text-gray-900">{artigo.titulo}</h2>
+                    {artigo.blindReviewAtivo && role === 'REVISOR' && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        Modo Blind Review
+                      </span>
+                    )}
+                  </div>
                   {artigo.resumo && (
                     <p className="text-sm text-gray-600 mb-3 leading-relaxed">{artigo.resumo}</p>
                   )}
-                  <div className="flex flex-col gap-1 text-sm text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                    <p><span className="font-semibold text-gray-800">Autor:</span> <span className="text-gray-900 font-medium">{getNomeUsuario(artigo.autorId)}</span></p>
+                  <div className="flex flex-col gap-1.5 text-sm text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <p>
+                      <span className="font-semibold text-gray-800">Autor:</span>{' '}
+                      <span className="text-gray-900 font-medium">
+                        {artigo.autorNome || (artigo.autorId === 'ANONIMO' ? 'Autor Anônimo (Double-Blind)' : 'Autor')}
+                      </span>
+                      {artigo.autorInstituicao && (
+                        <span className="text-xs text-gray-500 ml-1.5">({artigo.autorInstituicao})</span>
+                      )}
+                    </p>
+
                     {artigo.nomeArquivoManuscrito && (
-                      <p><span className="font-semibold text-gray-800">Manuscrito:</span> <span className="text-gray-900 font-medium">{artigo.nomeArquivoManuscrito}</span></p>
+                      <p>
+                        <span className="font-semibold text-gray-800">Manuscrito Anonimizado:</span>{' '}
+                        {artigo.urlManuscrito ? (
+                          <a
+                            href={artigo.urlManuscrito}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-700 hover:underline font-medium"
+                          >
+                            {artigo.nomeArquivoManuscrito}
+                          </a>
+                        ) : (
+                          <span className="text-gray-900 font-medium">{artigo.nomeArquivoManuscrito}</span>
+                        )}
+                      </p>
                     )}
-                    <p><span className="font-semibold text-gray-800">Editor(es):</span> <span className="text-gray-900 font-medium">{getEditorArtigo(artigo.editorId)}</span></p>
-                    <div className="flex items-start gap-1"><span className="font-semibold text-gray-800 shrink-0">Revisor(es):</span> 
-                      {artigo.revisoresIds.length > 0 ? (
-                        <span className="inline-flex gap-2 flex-wrap text-gray-900 font-medium">
-                          {artigo.revisoresIds.map(id => {
-                            const jaSubmeteu = artigo.revisoes.some((r) => r.revisorId === id);
-                            return (
-                              <span key={id} className="inline-flex items-center gap-1 bg-gray-200 px-2 py-0.5 rounded">
-                                {getNomeUsuario(id)}
-                                {role === 'EDITOR' && artigo.editorId === userId && artigo.status === 'EM_REVISAO' && !jaSubmeteu && (
-                                  <button 
-                                    onClick={() => handleDesatribuirRevisor(artigo.id, id)}
-                                    className="text-red-500 hover:text-red-700 ml-1 font-bold text-lg leading-none"
-                                    title="Remover Revisor"
-                                  >
-                                    &times;
-                                  </button>
-                                )}
-                              </span>
-                            );
-                          })}
-                        </span>
-                      ) : <span className="text-gray-900 font-medium">Nenhum atribuído</span>}
+
+                    {artigo.nomeArquivoIdentificado && (
+                      <p>
+                        <span className="font-semibold text-gray-800">Manuscrito Identificado:</span>{' '}
+                        {artigo.urlManuscritoIdentificado ? (
+                          <a
+                            href={artigo.urlManuscritoIdentificado}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-700 hover:underline font-medium"
+                          >
+                            {artigo.nomeArquivoIdentificado}
+                          </a>
+                        ) : (
+                          <span className="text-gray-900 font-medium">{artigo.nomeArquivoIdentificado}</span>
+                        )}
+                      </p>
+                    )}
+
+                    <p>
+                      <span className="font-semibold text-gray-800">Editor(a):</span>{' '}
+                      <span className="text-gray-900 font-medium">
+                        {artigo.editorNome || (artigo.editorId ? 'Editor Designado' : 'Nenhum (Pendente)')}
+                      </span>
+                    </p>
+
+                    <div className="flex items-start gap-1">
+                      <span className="font-semibold text-gray-800 shrink-0">Revisor(es):</span>
+                      {role === 'EDITOR' ? (
+                        (artigo.revisoresDetalhes && artigo.revisoresDetalhes.length > 0) || artigo.revisoresIds.length > 0 ? (
+                          <span className="inline-flex gap-2 flex-wrap text-gray-900 font-medium">
+                            {(artigo.revisoresDetalhes || artigo.revisoresIds.map((id): RevisorDetalhe => ({ id, nome: id }))).map((rev) => {
+                              const jaSubmeteu = artigo.revisoes.some((r) => r.revisorId === rev.id);
+                              return (
+                                <span key={rev.id} className="inline-flex items-center gap-1 bg-gray-200 px-2 py-0.5 rounded">
+                                  {rev.nome}
+                                  {rev.instituicao ? ` (${rev.instituicao})` : ''}
+                                  {artigo.editorId === userId && artigo.status === 'EM_REVISAO' && !jaSubmeteu && (
+                                    <button
+                                      onClick={() => handleDesatribuirRevisor(artigo.id, rev.id)}
+                                      className="text-red-500 hover:text-red-700 ml-1 font-bold text-lg leading-none"
+                                      title="Remover Revisor"
+                                    >
+                                      &times;
+                                    </button>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </span>
+                        ) : (
+                          <span className="text-gray-900 font-medium">Nenhum atribuído</span>
+                        )
+                      ) : role === 'REVISOR' ? (
+                        <span className="text-gray-700 font-medium">Você (avaliação cega ativa)</span>
+                      ) : (
+                        <span className="text-gray-600 italic">Ocultos (Double-Blind Review)</span>
+                      )}
                     </div>
+
                     <p className="mt-1 pt-1 border-t border-gray-200 text-xs text-gray-500">
-                      Total de {artigo.revisoes.length} revisão(ões) submetida(s)
+                      {role === 'AUTOR'
+                        ? statusFinalOuPublicado
+                          ? `${artigo.revisoes.length} parecer(es) disponível(is) (identidades dos revisores preservadas)`
+                          : 'Pareceres ocultos até a decisão editorial (Double-Blind)'
+                        : role === 'REVISOR'
+                          ? jaRevisadoPorMim
+                            ? 'Sua avaliação já foi registrada neste manuscrito'
+                            : 'Aguardando sua avaliação'
+                          : `Total de ${artigo.revisoes.length} revisão(ões) submetida(s)`}
                     </p>
                   </div>
-                  
+
                   {role === 'EDITOR' && artigo.revisoes.length > 0 && (
                     <div className="mt-4 border-t border-gray-100 pt-4">
                       <div className="flex items-center justify-between mb-2">
@@ -317,23 +411,50 @@ export default function Dashboard() {
                       <ul className="space-y-2">
                         {artigo.revisoes.map((rev, idx) => (
                           <li key={idx} className="text-sm bg-gray-50 p-3 rounded-lg border border-gray-300">
-                            <span className="font-bold text-black">Nota:</span> <span className="font-bold text-black">{rev.nota}/5</span> | 
-                            <span className="font-bold text-black ml-2">Revisor:</span> <span className="text-black">{getNomeUsuario(rev.revisorId)}</span> | 
+                            <span className="font-bold text-black">Nota:</span> <span className="font-bold text-black">{rev.nota}/5</span> |
+                            <span className="font-bold text-black ml-2">Revisor:</span> <span className="text-black">{rev.revisorNome || 'Revisor'}</span> |
                             <span className="font-bold text-black ml-2">Parecer:</span> {rev.estaAprovado ? <span className="text-green-600 font-bold ml-1">Aprovado</span> : <span className="text-red-600 font-bold ml-1">Reprovado</span>}
-                            <p className="mt-2 text-black font-medium italic border-l-4 border-gray-400 pl-2 bg-gray-100 p-2 rounded">"{rev.comentarios}"</p>
+                            <p className="mt-2 text-black font-medium italic border-l-4 border-gray-400 pl-2 bg-gray-100 p-2 rounded">&ldquo;{rev.comentarios}&rdquo;</p>
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
 
-                  {role === 'AUTOR' && artigo.revisoes.length > 0 && (artigo.status === 'ACEITO' || artigo.status === 'REJEITADO') && (
+                  {role === 'REVISOR' && artigo.revisoes.length > 0 && (
                     <div className="mt-4 border-t border-gray-100 pt-4">
-                      <h4 className="text-sm font-semibold mb-2 text-gray-800">Feedbacks Finais:</h4>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2">Minha Avaliação:</h4>
                       <ul className="space-y-2">
                         {artigo.revisoes.map((rev, idx) => (
-                          <li key={idx} className="text-sm bg-gray-50 p-3 rounded-lg border border-gray-200 text-gray-600 italic">
-                            "{rev.comentarios}"
+                          <li key={idx} className="text-sm bg-gray-50 p-3 rounded-lg border border-gray-200">
+                            <span className="font-bold text-gray-900">Nota: {rev.nota}/5</span> |{' '}
+                            <span className="font-bold text-gray-900">Parecer:</span>{' '}
+                            {rev.estaAprovado ? (
+                              <span className="text-green-600 font-bold">Aprovado</span>
+                            ) : (
+                              <span className="text-red-600 font-bold">Reprovado</span>
+                            )}
+                            <p className="mt-2 text-gray-700 italic">&ldquo;{rev.comentarios}&rdquo;</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {role === 'AUTOR' && artigo.revisoes.length > 0 && statusFinalOuPublicado && (
+                    <div className="mt-4 border-t border-gray-100 pt-4">
+                      <h4 className="text-sm font-semibold mb-2 text-gray-800">Feedbacks Finais (Revisores Anônimos):</h4>
+                      <ul className="space-y-2">
+                        {artigo.revisoes.map((rev, idx) => (
+                          <li key={idx} className="text-sm bg-gray-50 p-3 rounded-lg border border-gray-200 text-gray-700">
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-800 mb-1">
+                              <span>{rev.revisorNome || `Revisor #${idx + 1}`}</span>
+                              <span>• Nota {rev.nota}/5</span>
+                              <span className={rev.estaAprovado ? 'text-green-700' : 'text-red-700'}>
+                                • {rev.estaAprovado ? 'Aprovado' : 'Reprovado'}
+                              </span>
+                            </div>
+                            <p className="italic text-gray-600">&ldquo;{rev.comentarios}&rdquo;</p>
                           </li>
                         ))}
                       </ul>
@@ -341,7 +462,7 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                <div className="flex flex-col items-end gap-3 shrink-0 sm:min-w-[140px]">
+                <div className="flex flex-col items-end gap-3 shrink-0 sm:min-w-[160px]">
                   {getBadgeStatus(artigo.status)}
                   
                   {role === 'EDITOR' && !artigo.editorId && (
@@ -375,7 +496,16 @@ export default function Dashboard() {
                     </button>
                   )}
 
-                  {role === 'EDITOR' && artigo.editorId === userId && artigo.revisoresIds.length === 0 && (
+                  {role === 'EDITOR' && artigo.editorId === userId && artigo.status === 'ACEITO' && (
+                    <button
+                      onClick={() => handlePublicarArtigo(artigo.id)}
+                      className="w-full text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-lg transition-colors mt-1 shadow-sm"
+                    >
+                      Publicar (Revelar Autor)
+                    </button>
+                  )}
+
+                  {role === 'EDITOR' && artigo.editorId === userId && artigo.revisoresIds.length === 0 && artigo.status !== 'PUBLICADO' && (
                     <button 
                       onClick={() => handleAbandonarArtigo(artigo.id)}
                       className="w-full text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-2 rounded-lg transition-colors mt-2 shadow-sm"
@@ -401,7 +531,7 @@ export default function Dashboard() {
                     </button>
                   )}
 
-                  {(role === 'AUTOR' || role === 'EDITOR') && artigo.status !== 'ACEITO' && artigo.status !== 'REJEITADO' && (
+                  {(ehAutorDoArtigo || role === 'EDITOR') && !statusFinalOuPublicado && (
                     <Link
                       href={`/artigo/${artigo.id}/editar`}
                       className="w-full text-center text-sm font-medium text-gray-800 bg-gray-100 hover:bg-gray-200 border border-gray-300 px-3 py-2 rounded-lg transition-colors mt-2 shadow-sm"
@@ -410,7 +540,7 @@ export default function Dashboard() {
                     </Link>
                   )}
 
-                  {(role === 'AUTOR' || role === 'EDITOR') && (
+                  {(ehAutorDoArtigo || role === 'EDITOR') && artigo.status !== 'PUBLICADO' && (
                     <button
                       onClick={() => openDeleteModal(artigo)}
                       className="w-full text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-2 rounded-lg transition-colors mt-1 shadow-sm"
@@ -430,20 +560,40 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-1">Atribuir Revisor</h3>
-              <p className="text-sm text-gray-500 mb-6">Selecione o revisor para avaliar este manuscrito.</p>
+              <p className="text-sm text-gray-500 mb-6">
+                Selecione revisores sem conflito institucional com o autor.
+              </p>
               
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Revisores Disponíveis</label>
-                <div className="space-y-2 max-h-48 overflow-y-auto p-3 border border-gray-300 rounded-xl bg-gray-50">
+                <div className="space-y-2 max-h-56 overflow-y-auto p-3 border border-gray-300 rounded-xl bg-gray-50">
                   {revisores.map(r => {
                     const artigoAtual = artigos.find(a => a.id === selectedArtigoId);
-                    const jaAtribuido = artigoAtual?.revisoresIds.includes(r.id);
+                    const jaAtribuido = Boolean(artigoAtual?.revisoresIds.includes(r.id));
+                    const mesmoAutor = Boolean(artigoAtual && artigoAtual.autorId === r.id);
+                    const instAutor = normalizarInstituicao(artigoAtual?.autorInstituicao);
+                    const instRevisor = normalizarInstituicao(r.instituicao);
+                    const mesmaInstituicao = Boolean(
+                      instAutor &&
+                        instRevisor &&
+                        instAutor !== 'nao informada' &&
+                        instRevisor !== 'nao informada' &&
+                        instAutor === instRevisor,
+                    );
+                    const motivoBloqueio = jaAtribuido
+                      ? 'Já atribuído'
+                      : mesmoAutor
+                        ? 'É o autor do artigo'
+                        : mesmaInstituicao
+                          ? 'Conflito institucional'
+                          : null;
+
                     return (
-                      <label key={r.id} className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${jaAtribuido ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer'}`}>
+                      <label key={r.id} className={`flex items-start gap-3 p-2.5 rounded-lg transition-colors ${motivoBloqueio ? 'opacity-60 cursor-not-allowed bg-red-50/60' : 'hover:bg-gray-100 cursor-pointer'}`}>
                         <input
                           type="checkbox"
-                          disabled={jaAtribuido}
-                          checked={selectedRevisoresIds.includes(r.id) || !!jaAtribuido}
+                          disabled={Boolean(motivoBloqueio)}
+                          checked={selectedRevisoresIds.includes(r.id) || jaAtribuido}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setSelectedRevisoresIds([...selectedRevisoresIds, r.id]);
@@ -451,9 +601,21 @@ export default function Dashboard() {
                               setSelectedRevisoresIds(selectedRevisoresIds.filter(id => id !== r.id));
                             }
                           }}
-                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                          className="w-4 h-4 mt-0.5 text-blue-600 rounded focus:ring-blue-500"
                         />
-                        <span className="text-sm font-medium text-gray-900">{r.nome} {jaAtribuido && '(Já atribuído)'}</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-gray-900">
+                            {r.nome}
+                            {motivoBloqueio && (
+                              <span className="ml-2 text-xs font-semibold text-red-700">
+                                ({motivoBloqueio})
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {r.instituicao || 'Sem instituição'} {r.email ? `• ${r.email}` : ''}
+                          </span>
+                        </div>
                       </label>
                     );
                   })}

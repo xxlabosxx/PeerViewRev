@@ -12,7 +12,11 @@ export class LoginUsuarioService implements LoginUsuarioUseCase {
   ) {}
 
   async execute(dto: LoginUsuarioDto): Promise<UsuarioResponseDto> {
-    const usuario = await this.usuarioRepository.buscarPorNome(dto.nome);
+    const identificador = dto.nome.trim();
+    const usuario =
+      (await this.usuarioRepository.buscarPorNome(identificador)) ||
+      (await this.usuarioRepository.buscarPorEmail(identificador));
+
     if (!usuario || usuario.senha !== dto.senha) {
       throw new HttpException('Usuário ou senha incorretos. Tente novamente.', HttpStatus.UNAUTHORIZED);
     }
@@ -20,6 +24,8 @@ export class LoginUsuarioService implements LoginUsuarioUseCase {
     return {
       id: usuario.id,
       nome: usuario.nome,
+      email: usuario.email,
+      instituicao: usuario.instituicao,
       papel: usuario.papel,
     };
   }

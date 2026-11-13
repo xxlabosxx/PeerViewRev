@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useProfile } from '../contexts/ProfileContext';
 
 export default function Navbar() {
-  const { role, nome, logout } = useProfile();
+  const { role, nome, instituicao, logout } = useProfile();
 
   const roleColors = {
     AUTOR: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -25,7 +25,10 @@ export default function Navbar() {
             {role !== 'NEUTRO' ? (
               <>
                 <div className="hidden sm:flex items-center gap-2">
-                  <span className="text-sm text-gray-500 font-medium">Olá, {nome}</span>
+                  <span className="text-sm text-gray-500 font-medium">
+                    Olá, {nome}
+                    {instituicao ? ` (${instituicao})` : ''}
+                  </span>
                   <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${roleColors[role]}`}>
                     {role}
                   </span>
