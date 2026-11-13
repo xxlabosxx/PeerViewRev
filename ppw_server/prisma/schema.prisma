@@ -17,6 +17,7 @@ enum StatusArtigo {
   EM_REVISAO
   ACEITO
   REJEITADO
+  PUBLICADO
 }
 
 enum RecomendacaoRevisao {
@@ -45,14 +46,15 @@ model Usuario {
 }
 
 model Artigo {
-  id          String       @id @default(uuid())
-  titulo      String
-  resumo      String
-  autorId     String       @map("autor_id")
-  editorId    String?      @map("editor_id")
-  arquivoUrl  String       @map("arquivo_url")
-  versao      Int          @default(1)
-  status      StatusArtigo @default(PENDENTE)
+  id                     String       @id @default(uuid())
+  titulo                 String
+  resumo                 String
+  autorId                String       @map("autor_id")
+  editorId               String?      @map("editor_id")
+  arquivoUrl             String       @map("arquivo_url")
+  arquivoIdentificadoUrl String?      @map("arquivo_identificado_url")
+  versao                 Int          @default(1)
+  status                 StatusArtigo @default(PENDENTE)
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 

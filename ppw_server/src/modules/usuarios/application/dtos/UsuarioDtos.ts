@@ -1,12 +1,20 @@
-import { IsString, IsNotEmpty, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, IsIn, IsEmail } from 'class-validator';
 
 export class CadastrarUsuarioDto {
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'O nome é obrigatório.' })
   nome: string;
 
+  @IsEmail({}, { message: 'Informe um e-mail institucional válido.' })
+  @IsNotEmpty({ message: 'O e-mail é obrigatório.' })
+  email: string;
+
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'A instituição é obrigatória para prevenção de conflito de interesse.' })
+  instituicao: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'A senha é obrigatória.' })
   senha: string;
 
   @IsString()
@@ -27,5 +35,7 @@ export class LoginUsuarioDto {
 export class UsuarioResponseDto {
   id: string;
   nome: string;
+  email: string;
+  instituicao: string;
   papel: 'AUTOR' | 'EDITOR' | 'REVISOR';
 }

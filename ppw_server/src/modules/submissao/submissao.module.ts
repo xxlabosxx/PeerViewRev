@@ -18,6 +18,8 @@ import { SUBMETER_REVISAO_USE_CASE } from './application/use-case/write/submeter
 import { SubmeterRevisaoService } from './application/service/write/submeter.revisao.service';
 import { DECIDIR_STATUS_ARTIGO_USE_CASE } from './application/use-case/write/decidir.status.artigo.use-case';
 import { DecidirStatusArtigoService } from './application/service/write/decidir.status.artigo.service';
+import { PUBLICAR_ARTIGO_USE_CASE } from './application/use-case/write/publicar.artigo.use-case';
+import { PublicarArtigoService } from './application/service/write/publicar.artigo.service';
 import { BUSCAR_ARTIGOS_USE_CASE } from './application/use-case/read/buscar.artigos.use-case';
 import { BuscarArtigosService } from './application/service/read/buscar.artigos.service';
 import { BUSCAR_ARTIGO_POR_ID_USE_CASE } from './application/use-case/read/buscar.artigo-por-id.use-case';
@@ -26,10 +28,13 @@ import { ARTIGO_READ_REPOSITORY } from './domain/ports/artigo.read.repository';
 import { ArtigoInMemoryReadRepository } from './infrastructure/adapters/artigo.inmemory.read.repository';
 import { ARTIGO_WRITE_REPOSITORY } from './domain/ports/artigo.write.repository';
 import { ArtigoInMemoryWriteRepository } from './infrastructure/adapters/artigo.inmemory.write.repository';
+import { PdfSanitizerService } from './infrastructure/pdf/pdf-sanitizer.service';
+import { UsuariosModule } from '../usuarios/UsuariosModule';
 
 const submissaoControllers = [SubmissaoController];
 
 const submissaoProviders = [
+  PdfSanitizerService,
   {
     provide: ARTIGO_READ_REPOSITORY,
     useClass: ArtigoInMemoryReadRepository,
@@ -82,10 +87,14 @@ const submissaoProviders = [
     provide: DECIDIR_STATUS_ARTIGO_USE_CASE,
     useClass: DecidirStatusArtigoService,
   },
+  {
+    provide: PUBLICAR_ARTIGO_USE_CASE,
+    useClass: PublicarArtigoService,
+  },
 ];
 
 @Module({
-  imports: [],
+  imports: [UsuariosModule],
   controllers: [...submissaoControllers],
   providers: [...submissaoProviders],
   exports: [ARTIGO_READ_REPOSITORY, ARTIGO_WRITE_REPOSITORY],

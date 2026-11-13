@@ -13,12 +13,24 @@ export class ListarUsuariosService implements ListarUsuariosUseCase {
 
   async listarTodos(): Promise<UsuarioResponseDto[]> {
     const todos = await this.usuarioRepository.listarTodos();
-    return todos.map((u) => ({ id: u.id, nome: u.nome, papel: u.papel }));
+    return todos.map((u) => ({
+      id: u.id,
+      nome: u.nome,
+      email: u.email,
+      instituicao: u.instituicao,
+      papel: u.papel,
+    }));
   }
 
   async listarPorPapel(papel: 'AUTOR' | 'EDITOR' | 'REVISOR'): Promise<UsuarioResponseDto[]> {
     const filtrados = await this.usuarioRepository.listarPorPapel(papel);
-    return filtrados.map((u) => ({ id: u.id, nome: u.nome, papel: u.papel }));
+    return filtrados.map((u) => ({
+      id: u.id,
+      nome: u.nome,
+      email: u.email,
+      instituicao: u.instituicao,
+      papel: u.papel,
+    }));
   }
 }
 

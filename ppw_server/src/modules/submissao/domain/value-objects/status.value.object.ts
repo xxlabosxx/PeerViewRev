@@ -5,6 +5,7 @@ export enum StatusArtigoEnum {
   EM_REVISAO = 'EM_REVISAO',
   ACEITO = 'ACEITO',
   REJEITADO = 'REJEITADO',
+  PUBLICADO = 'PUBLICADO',
 }
 
 export interface StatusArtigoProps {
@@ -32,6 +33,10 @@ export class StatusArtigoValueObject extends ValueObject<StatusArtigoProps> {
     return new StatusArtigoValueObject({ value: StatusArtigoEnum.REJEITADO });
   }
 
+  static publicado(): StatusArtigoValueObject {
+    return new StatusArtigoValueObject({ value: StatusArtigoEnum.PUBLICADO });
+  }
+
   getValue(): StatusArtigoEnum {
     return this.props.value;
   }
@@ -50,6 +55,10 @@ export class StatusArtigoValueObject extends ValueObject<StatusArtigoProps> {
 
   isRejeitado(): boolean {
     return this.props.value === StatusArtigoEnum.REJEITADO;
+  }
+
+  isPublicado(): boolean {
+    return this.props.value === StatusArtigoEnum.PUBLICADO;
   }
 
   static create(value: unknown): StatusArtigoValueObject {

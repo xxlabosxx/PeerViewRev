@@ -17,10 +17,24 @@ export class CadastrarUsuarioService implements CadastrarUsuarioUseCase {
       throw new HttpException('Nome de usuário já existe.', HttpStatus.BAD_REQUEST);
     }
 
-    const usuario = await this.usuarioRepository.criar(dto.nome, dto.senha, dto.papel);
+    const emailExistente = await this.usuarioRepository.buscarPorEmail(dto.email);
+    if (emailExistente) {
+      throw new HttpException('E-mail já cadastrado no sistema.', HttpStatus.BAD_REQUEST);
+    }
+
+    const usuario = await this.usuarioRepository.criar(
+      dto.nome.trim(),
+      dto.senha,
+      dto.papel,
+      dto.email.trim().toLowerCase(),
+      dto.instituicao.trim(),
+    );
+
     return {
       id: usuario.id,
       nome: usuario.nome,
+      email: usuario.email,
+      instituicao: usuario.instituicao,
       papel: usuario.papel,
     };
   }
