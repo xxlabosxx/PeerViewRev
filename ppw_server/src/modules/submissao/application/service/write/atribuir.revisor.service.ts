@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { AtribuirRevisorUseCase } from '../../use-case/write/atribuir.revisor.use-case';
 import type { AtribuirRevisorRequest } from '../../dto/submissao.dto.request';
 import type { MensagemResponse } from '../../dto/submissao.dto.response';
@@ -45,12 +51,32 @@ export class AtribuirRevisorService implements AtribuirRevisorUseCase {
       }
     }
 
+    const estadoAnterior = artigo.status.getValue();
+
     try {
       artigo.atribuirRevisor(request.revisorId);
     } catch (error: any) {
       throw new BadRequestException(error.message);
     }
-    await this.writeRepository.salvar(artigo);
+
+    const novoEstado = artigo.status.getValue();
+    try {
+      if (estadoAnterior !== novoEstado) {
+        await this.writeRepository.salvarComAuditoria(artigo, {
+          estadoAnterior,
+          novoEstado,
+          atorId: artigo.editorId || artigo.autorId,
+          justificativa: 'Revisor atribuído; manuscrito entrou em revisão por pares.',
+        });
+      } else {
+        await this.writeRepository.salvar(artigo);
+      }
+    } catch (error: any) {
+      if (error?.message?.includes('Conflito de concorrência')) {
+        throw new ConflictException(error.message);
+      }
+      throw new BadRequestException(error.message);
+    }
 
     return { mensagem: 'Revisor atribuído com sucesso' };
   }

@@ -104,4 +104,12 @@ export class DecidirStatusRequest {
   @IsString()
   @IsNotEmpty()
   status: 'ACEITO' | 'REJEITADO';
+
+  @IsOptional()
+  @IsString()
+  justificativa?: string;
+
+  @IsOptional()
+  @IsString()
+  editorId?: string;
 }

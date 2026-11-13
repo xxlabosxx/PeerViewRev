@@ -1,7 +1,11 @@
 import { ArtigoEntity } from '../../domain/entity/artigo.entity';
 import { ManuscritoValueObject } from '../../domain/value-objects/manuscrito.value.object';
 import { SubmeterArtigoRequest } from '../../application/dto/submissao.dto.request';
-import { ArtigoResponse, RevisaoResponse } from '../../application/dto/submissao.dto.response';
+import {
+  ArtigoResponse,
+  AuditLogResponse,
+  RevisaoResponse,
+} from '../../application/dto/submissao.dto.response';
 import { Usuario } from '../../../usuarios/domain/Usuario';
 
 export interface BlindReviewViewerContext {
@@ -57,6 +61,26 @@ export class ArtigoMappers {
 
     const editorNome = entity.editorId ? (getNomeUsuario(entity.editorId) ?? 'Editor') : undefined;
 
+    const mapearHistoricoAuditoria = (ocultarAutorManuscrito: boolean): AuditLogResponse[] =>
+      entity.historicoAuditoria.map((log) => {
+        const ehAcaoDoAutorDoArtigo = log.autorId === entity.autorId;
+        const deveMascararAtor = ocultarAutorManuscrito && ehAcaoDoAutorDoArtigo;
+
+        return {
+          id: log.id,
+          artigoId: log.artigoId,
+          estadoAnterior: log.estadoAnterior,
+          novoEstado: log.novoEstado,
+          autorId: deveMascararAtor ? 'ANONIMO' : log.autorId,
+          autorNome: deveMascararAtor
+            ? 'Autor Anônimo (Double-Blind)'
+            : (getNomeUsuario(log.autorId) ??
+              (ehAcaoDoAutorDoArtigo ? 'Autor' : 'Editor')),
+          justificativa: log.justificativa,
+          timestamp: log.timestamp.toISOString(),
+        };
+      });
+
     // 1. EDITOR: visão editorial completa (Double-Blind)
     if (role === 'EDITOR') {
       return {
@@ -68,6 +92,7 @@ export class ArtigoMappers {
         nomeArquivoIdentificado: entity.manuscritoIdentificado?.nomeArquivo,
         urlManuscritoIdentificado: entity.manuscritoIdentificado?.url,
         status,
+        versao: entity.versao,
         autorId: entity.autorId,
         autorNome: getNomeUsuario(entity.autorId) ?? 'Autor',
         autorInstituicao: usuariosMap?.get(entity.autorId)?.instituicao,
@@ -91,6 +116,7 @@ export class ArtigoMappers {
           comentarios: r.comentarios,
           estaAprovado: r.estaAprovado,
         })),
+        historicoAuditoria: mapearHistoricoAuditoria(false),
         blindReviewAtivo: false,
       };
     }
@@ -123,6 +149,7 @@ export class ArtigoMappers {
           ? entity.manuscritoIdentificado?.url
           : undefined,
         status,
+        versao: entity.versao,
         autorId: autorRevelado ? entity.autorId : 'ANONIMO',
         autorNome: autorRevelado
           ? (getNomeUsuario(entity.autorId) ?? 'Autor')
@@ -134,6 +161,7 @@ export class ArtigoMappers {
         editorNome,
         revisoresIds: userId && entity.revisoresIds.includes(userId) ? [userId] : [],
         revisoes: minhasRevisoes,
+        historicoAuditoria: mapearHistoricoAuditoria(!autorRevelado),
         blindReviewAtivo: !autorRevelado,
       };
     }
@@ -167,6 +195,7 @@ export class ArtigoMappers {
           ? entity.manuscritoIdentificado?.url
           : undefined,
         status,
+        versao: entity.versao,
         autorId: entity.autorId,
         autorNome: getNomeUsuario(entity.autorId) ?? 'Autor',
         autorInstituicao: usuariosMap?.get(entity.autorId)?.instituicao,
@@ -174,6 +203,7 @@ export class ArtigoMappers {
         editorNome,
         revisoresIds: [],
         revisoes: revisoesMascaradas,
+        historicoAuditoria: mapearHistoricoAuditoria(false),
         blindReviewAtivo: true,
       };
     }
@@ -186,6 +216,7 @@ export class ArtigoMappers {
       nomeArquivoManuscrito: entity.manuscrito.nomeArquivo,
       urlManuscrito: entity.manuscrito.url,
       status,
+      versao: entity.versao,
       autorId: estaPublicado ? entity.autorId : 'ANONIMO',
       autorNome: estaPublicado
         ? (getNomeUsuario(entity.autorId) ?? 'Autor')
@@ -195,6 +226,7 @@ export class ArtigoMappers {
       editorNome,
       revisoresIds: [],
       revisoes: [],
+      historicoAuditoria: mapearHistoricoAuditoria(!estaPublicado),
       blindReviewAtivo: !estaPublicado,
     };
   }

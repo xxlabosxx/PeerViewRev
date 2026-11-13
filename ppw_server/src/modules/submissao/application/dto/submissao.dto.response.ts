@@ -43,6 +43,17 @@ export interface RevisorDetalheResponse {
   instituicao?: string;
 }
 
+export interface AuditLogResponse {
+  id: string;
+  artigoId: string;
+  estadoAnterior: string | null;
+  novoEstado: string;
+  autorId: string;
+  autorNome?: string;
+  justificativa?: string;
+  timestamp: string;
+}
+
 export class ArtigoResponse {
   id: string;
   titulo: string;
@@ -52,6 +63,7 @@ export class ArtigoResponse {
   nomeArquivoIdentificado?: string;
   urlManuscritoIdentificado?: string;
   status: string;
+  versao?: number;
   autorId: string;
   autorNome?: string;
   autorInstituicao?: string;
@@ -60,5 +72,6 @@ export class ArtigoResponse {
   revisoresIds: string[];
   revisoresDetalhes?: RevisorDetalheResponse[];
   revisoes: RevisaoResponse[];
+  historicoAuditoria?: AuditLogResponse[];
   blindReviewAtivo?: boolean;
 }

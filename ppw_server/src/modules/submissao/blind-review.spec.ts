@@ -1,9 +1,10 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PDFDocument } from 'pdf-lib';
 import { ArtigoInMemoryReadRepository } from './infrastructure/adapters/artigo.inmemory.read.repository';
 import { ArtigoInMemoryWriteRepository } from './infrastructure/adapters/artigo.inmemory.write.repository';
+import { ArtigoPrismaWriteRepository } from './infrastructure/adapters/artigo.prisma.write.repository';
 import { InMemoryArtigoStore } from './infrastructure/adapters/artigo.inmemory.store';
 import { PdfSanitizerService } from './infrastructure/pdf/pdf-sanitizer.service';
 import { BuscarArtigosService } from './application/service/read/buscar.artigos.service';
@@ -15,6 +16,9 @@ import { SubmeterRevisaoService } from './application/service/write/submeter.rev
 import { DecidirStatusArtigoService } from './application/service/write/decidir.status.artigo.service';
 import { PublicarArtigoService } from './application/service/write/publicar.artigo.service';
 import { InMemoryUsuarioRepository } from '../usuarios/infrastructure/InMemoryUsuarioRepository';
+import { ArtigoEntity } from './domain/entity/artigo.entity';
+import { ManuscritoValueObject } from './domain/value-objects/manuscrito.value.object';
+import { StatusArtigoEnum } from './domain/value-objects/status.value.object';
 
 describe('Double-Blind Review & Anonimização (Backend)', () => {
   const arquivosCriados: string[] = [];
@@ -34,7 +38,7 @@ describe('Double-Blind Review & Anonimização (Backend)', () => {
   let pdfSanitizerService: PdfSanitizerService;
 
   beforeEach(() => {
-    InMemoryArtigoStore.artigos.clear();
+    InMemoryArtigoStore.clear();
     usuarioRepo = new InMemoryUsuarioRepository();
     readRepo = new ArtigoInMemoryReadRepository();
     writeRepo = new ArtigoInMemoryWriteRepository();
@@ -322,5 +326,116 @@ describe('Double-Blind Review & Anonimização (Backend)', () => {
     expect(vitrinePublica[0].autorNome).toBe('Maria Silva');
     expect(vitrinePublica[0].revisoresIds).toEqual([]);
     expect(vitrinePublica[0].revisoes).toEqual([]);
+
+    // Verifica que todas as 4 transições foram registradas de forma imutável no AuditLog
+    expect(visaoRevisorPublicado.historicoAuditoria).toHaveLength(4);
+    expect(visaoRevisorPublicado.historicoAuditoria?.map((l) => [l.estadoAnterior, l.novoEstado])).toEqual([
+      [null, 'PENDENTE'],
+      ['PENDENTE', 'EM_REVISAO'],
+      ['EM_REVISAO', 'ACEITO'],
+      ['ACEITO', 'PUBLICADO'],
+    ]);
+  });
+
+  it('deve executar transação ACID ($transaction) com Optimistic Locking e gravar AuditLog no ArtigoPrismaWriteRepository', async () => {
+    const operacoesExecutadas: string[] = [];
+    const mockTx = {
+      artigo: {
+        updateMany: jest.fn().mockImplementation(async ({ where }) => {
+          operacoesExecutadas.push(`artigo.updateMany(v=${where.versao})`);
+          return { count: 1 };
+        }),
+      },
+      artigosRevisores: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+        upsert: jest.fn().mockResolvedValue({}),
+      },
+      auditLog: {
+        create: jest.fn().mockImplementation(async ({ data }) => {
+          operacoesExecutadas.push(`auditLog.create(${data.estadoAnterior}->${data.novoEstado})`);
+          return data;
+        }),
+      },
+    };
+
+    const mockPrismaService = {
+      $transaction: jest.fn().mockImplementation(async (callback: any) => {
+        return await callback(mockTx);
+      }),
+    };
+
+    const prismaWriteRepo = new ArtigoPrismaWriteRepository(mockPrismaService as any);
+    const artigo = ArtigoEntity.create({
+      titulo: 'Artigo ACID Prisma',
+      resumo: 'Teste de atomicidade',
+      autorId: 'autor-1',
+      manuscrito: ManuscritoValueObject.create({
+        nomeArquivo: 'artigo.pdf',
+        url: 'http://localhost:3000/submissoes/arquivos/blind_artigo.pdf',
+      }),
+    });
+    artigo.atribuirRevisor('rev-1');
+
+    await prismaWriteRepo.salvarComAuditoria(artigo, {
+      estadoAnterior: StatusArtigoEnum.PENDENTE,
+      novoEstado: StatusArtigoEnum.EM_REVISAO,
+      atorId: 'editor-1',
+      justificativa: 'Início da revisão por pares',
+    });
+
+    expect(mockPrismaService.$transaction).toHaveBeenCalledTimes(1);
+    expect(operacoesExecutadas).toEqual([
+      'artigo.updateMany(v=1)',
+      'auditLog.create(PENDENTE->EM_REVISAO)',
+    ]);
+    expect(artigo.versao).toBe(2);
+    expect(artigo.historicoAuditoria).toHaveLength(1);
+    expect(artigo.historicoAuditoria[0].justificativa).toBe('Início da revisão por pares');
+  });
+
+  it('deve abortar a transação ACID (rollback) no ArtigoPrismaWriteRepository quando houver conflito de versão (Optimistic Lock)', async () => {
+    const mockTx = {
+      artigo: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }), // Simula linha já alterada por outra transação concorrente
+      },
+      artigosRevisores: {
+        deleteMany: jest.fn(),
+        upsert: jest.fn(),
+      },
+      auditLog: {
+        create: jest.fn(),
+      },
+    };
+
+    const mockPrismaService = {
+      $transaction: jest.fn().mockImplementation(async (callback: any) => {
+        return await callback(mockTx);
+      }),
+    };
+
+    const prismaWriteRepo = new ArtigoPrismaWriteRepository(mockPrismaService as any);
+    const artigo = ArtigoEntity.create({
+      titulo: 'Artigo Concorrente',
+      resumo: 'Resumo',
+      autorId: 'autor-1',
+      manuscrito: ManuscritoValueObject.create({
+        nomeArquivo: 'artigo.pdf',
+        url: 'http://localhost:3000/submissoes/arquivos/blind_artigo.pdf',
+      }),
+    });
+
+    await expect(
+      prismaWriteRepo.salvarComAuditoria(artigo, {
+        estadoAnterior: StatusArtigoEnum.EM_REVISAO,
+        novoEstado: StatusArtigoEnum.ACEITO,
+        atorId: 'editor-1',
+        justificativa: 'Aprovado',
+      }),
+    ).rejects.toThrow('Conflito de concorrência');
+
+    // Garante que o AuditLog NÃO foi criado após a falha do Optimistic Lock
+    expect(mockTx.auditLog.create).not.toHaveBeenCalled();
+    expect(artigo.versao).toBe(1);
+    expect(artigo.historicoAuditoria).toHaveLength(0);
   });
 });

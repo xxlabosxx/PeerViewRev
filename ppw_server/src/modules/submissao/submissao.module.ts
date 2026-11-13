@@ -26,22 +26,30 @@ import { BUSCAR_ARTIGO_POR_ID_USE_CASE } from './application/use-case/read/busca
 import { BuscarArtigoPorIdService } from './application/service/read/buscar.artigo-por-id.service';
 import { ARTIGO_READ_REPOSITORY } from './domain/ports/artigo.read.repository';
 import { ArtigoInMemoryReadRepository } from './infrastructure/adapters/artigo.inmemory.read.repository';
+import { ArtigoPrismaReadRepository } from './infrastructure/adapters/artigo.prisma.read.repository';
 import { ARTIGO_WRITE_REPOSITORY } from './domain/ports/artigo.write.repository';
 import { ArtigoInMemoryWriteRepository } from './infrastructure/adapters/artigo.inmemory.write.repository';
+import { ArtigoPrismaWriteRepository } from './infrastructure/adapters/artigo.prisma.write.repository';
 import { PdfSanitizerService } from './infrastructure/pdf/pdf-sanitizer.service';
 import { UsuariosModule } from '../usuarios/UsuariosModule';
 
 const submissaoControllers = [SubmissaoController];
 
+const usarPrisma = process.env.USE_PRISMA === 'true';
+
 const submissaoProviders = [
   PdfSanitizerService,
+  ArtigoInMemoryReadRepository,
+  ArtigoInMemoryWriteRepository,
+  ArtigoPrismaReadRepository,
+  ArtigoPrismaWriteRepository,
   {
     provide: ARTIGO_READ_REPOSITORY,
-    useClass: ArtigoInMemoryReadRepository,
+    useExisting: usarPrisma ? ArtigoPrismaReadRepository : ArtigoInMemoryReadRepository,
   },
   {
     provide: ARTIGO_WRITE_REPOSITORY,
-    useClass: ArtigoInMemoryWriteRepository,
+    useExisting: usarPrisma ? ArtigoPrismaWriteRepository : ArtigoInMemoryWriteRepository,
   },
   {
     provide: BUSCAR_ARTIGOS_USE_CASE,
@@ -97,6 +105,11 @@ const submissaoProviders = [
   imports: [UsuariosModule],
   controllers: [...submissaoControllers],
   providers: [...submissaoProviders],
-  exports: [ARTIGO_READ_REPOSITORY, ARTIGO_WRITE_REPOSITORY],
+  exports: [
+    ARTIGO_READ_REPOSITORY,
+    ARTIGO_WRITE_REPOSITORY,
+    ArtigoPrismaReadRepository,
+    ArtigoPrismaWriteRepository,
+  ],
 })
 export class SubmissaoModule {}

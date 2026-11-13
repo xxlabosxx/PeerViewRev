@@ -6,20 +6,33 @@ node_modules/
 .pnp.*
 
 # ==========================================
-# Builds e Caches de Compilação
+# Builds, Cobertura de Testes e Caches
 # ==========================================
 dist/
 .next/
 out/
 build/
+coverage/
 *.tsbuildinfo
 
 # ==========================================
-# Variáveis de Ambiente e Credenciais (Segurança)
+# Uploads de Arquivos Locais (PDFs de Teste)
+# ==========================================
+uploads/
+ppw_server/uploads/
+!ppw_server/uploads/.gitkeep
+
+# ==========================================
+# Variáveis de Ambiente, Bancos Locais e Credenciais (Segurança)
 # ==========================================
 .env
 .env.*
 !.env.example
+*.sqlite
+*.sqlite3
+*.db
+pgdata/
+postgres-data/
 
 # ==========================================
 # Logs e Debug
@@ -37,6 +50,9 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 .vscode/
+.idea/
+*.swp
+*.swo
 
 # ==========================================
 # Materiais do Professor / Diretórios Locais
