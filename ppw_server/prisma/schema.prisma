@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  AUTOR
+  REVISOR
+  EDITOR
+}
+
+enum StatusArtigo {
+  PENDENTE
+  EM_REVISAO
+  ACEITO
+  REJEITADO
+}
+
+enum RecomendacaoRevisao {
+  ACEITAR
+  REJEITAR
+  RESSALVAS
+}
+
+model Usuario {
+  id          String   @id @default(uuid())
+  nome        String
+  email       String   @unique
+  senha       String
+  role        Role     @default(AUTOR)
+  instituicao String   @default("Não informada")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  artigosSubmetidos Artigo[]           @relation("AutorArtigos")
+  artigosAssumidos  Artigo[]           @relation("EditorArtigos")
+  revisoes          Revisao[]
+  artigosAtribuidos ArtigosRevisores[]
+  logsAuditoria     AuditLog[]
+
+  @@map("usuarios")
+}
+
+model Artigo {
+  id          String       @id @default(uuid())
+  titulo      String
+  resumo      String
+  autorId     String       @map("autor_id")
+  editorId    String?      @map("editor_id")
+  arquivoUrl  String       @map("arquivo_url")
+  versao      Int          @default(1)
+  status      StatusArtigo @default(PENDENTE)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  autor     Usuario            @relation("AutorArtigos", fields: [autorId], references: [id], onDelete: Cascade)
+  editor    Usuario?           @relation("EditorArtigos", fields: [editorId], references: [id], onDelete: SetNull)
+  revisores ArtigosRevisores[]
+  revisoes  Revisao[]
+  logs      AuditLog[]
+
+  @@map("artigos")
+}
+
+model ArtigosRevisores {
+  artigoId   String   @map("artigo_id")
+  revisorId  String   @map("revisor_id")
+  atribuidoEm DateTime @default(now()) @map("atribuido_em")
+
+  artigo  Artigo  @relation(fields: [artigoId], references: [id], onDelete: Cascade)
+  revisor Usuario @relation(fields: [revisorId], references: [id], onDelete: Cascade)
+
+  @@id([artigoId, revisorId])
+  @@map("artigos_revisores")
+}
+
+model Revisao {
+  id           String              @id @default(uuid())
+  artigoId     String              @map("artigo_id")
+  revisorId    String              @map("revisor_id")
+  parecer      String
+  nota         Int
+  recomendacao RecomendacaoRevisao
+  criadoEm     DateTime            @default(now()) @map("criado_em")
+
+  artigo  Artigo  @relation(fields: [artigoId], references: [id], onDelete: Cascade)
+  revisor Usuario @relation(fields: [revisorId], references: [id], onDelete: Cascade)
+
+  @@unique([artigoId, revisorId])
+  @@map("revisoes")
+}
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  artigoId       String        @map("artigo_id")
+  estadoAnterior StatusArtigo? @map("estado_anterior")
+  novoEstado     StatusArtigo  @map("novo_estado")
+  autorId        String        @map("autor_id")
+  justificativa  String?
+  timestamp      DateTime      @default(now())
+
+  artigo Artigo  @relation(fields: [artigoId], references: [id], onDelete: Cascade)
+  autor  Usuario @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@index([artigoId])
+  @@map("audit_logs")
+}
