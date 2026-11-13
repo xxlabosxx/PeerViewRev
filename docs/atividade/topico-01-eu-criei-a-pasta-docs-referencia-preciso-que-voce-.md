@@ -1,0 +1,1587 @@
+# Tópico 01: Eu criei a pasta docs refêrencia. Preciso que vocẽ crie o seguint
+
+## 1. Eu criei a pasta docs refêrencia. Preciso que vocẽ crie o seguint
+
+### 1. Pergunta / Prompt Enviado para a IA
+
+Eu criei a pasta docs refêrencia. Preciso que vocẽ crie o seguinte sistema dentro dela.. 
+
+O professor pediu o seguinte: 
+- eu envio prompt para a IA
+- eu coloco a resposta da IA
+- depois eu coloco o código (caso haja na resposta)
+- depois eu faço uma reflexão a respeito do código da IA e o que eu entendi.
+
+Por isso, eu gostaria que você criasse uma página HTML unica com js e css imbutida. Onde o seguinte acontece: 
+
+A página deve ser uma tela branca responsiva scrolavel. Deve ter um botão de + no canto
+
+ao clicar eu adiciono 4 text áreas simples uma embaixo da outra 
+
+1 onde uma é a pergunta que eu fiz para a IA
+2 Coloco a resposta da IA
+3 opcional porém aparece com muita frequência. uma parte para código onde a formatação do código seja igual a de uma IDE
+4- espaço para que eu crie uma reflexão através da resposta da IA.
+
+e sempre em um canto deve haver um botão de + para adicionar outro campo. Ao clicar em + deve perguntar se conterá código, então caso sim ative a pergunta opcional, caso não terá apenas o passo 1, 2, 4.
+
+Além disso, sempre que eu criar um documento desse tipo. Ele deve ser automaticamente convertido para .MD e automaticamente inserido na minha pasta docs. Que está na raiz do projeto. Mas além disso. Deve sempre ficar a motras em uma aba lateral as que eu criei. Além de ser possivel exibir todos já criados em ordem de tópicos e enumerados.
+
+Este projeto é para me ajudar a organizar o trabalho do professor. Portanto faça algo simples e objetivo
+
+### 2. Resposta da IA
+
+Pronto! Criei o sistema completo dentro da pasta DocsReferencia:
+
+index.html — Página HTML única (com CSS e JS embutidos) limpa, branca, responsiva e rolável.
+server.js — Servidor local leve (já iniciado em segundo plano em http://localhost:3456
+) que converte automaticamente tudo o que você digita em Markdown e salva na pasta docs/.
+Como acessar e usar
+
+Você pode abrir de duas formas:
+
+Pelo navegador em http://localhost:3456
+Ou dando duplo clique direto no arquivo DocsReferencia/index.html
+Funcionalidades incluídas:
+Botão + flutuante no canto inferior direito (e no topo):
+Ao clicar em +, abre um modal perguntando se a resposta conterá código (Sim, conterá código ou Não, apenas texto).
+4 campos empilhados um embaixo do outro:
+Pergunta que fiz para a IA (Prompt)
+Resposta da IA
+Código da Resposta (Opcional — Estilo IDE): janela escura estilo VS Code com numeração de linhas automática, suporte à tecla Tab para indentação, seletor de linguagem (TypeScript, SQL, Prisma, etc.) e botão de copiar.
+Minha Reflexão Crítica e Refatoração
+Aba Lateral (Sidebar):
+Lista todos os tópicos criados enumerados (1, 2, 3...).
+Permite clicar em um tópico específico para focar nele ou clicar em "📋 Exibir Todos (Enumerados)" para ver todos em sequência na tela.
+Conversão e Gravação Automática em /docs:
+A cada alteração, o sistema gera e atualiza automaticamente:
+O documento consolidado docs/ai.decisions.md com índice e todos os tópicos enumerados;
+Arquivos .md individuais por tópico dentro de docs/ (ex: docs/topico-01-....md).
+Modern Web Guidance
+dialog: Usei o elemento nativo <dialog> aberto via showModal(), apliquei overscroll-behavior: contain em dialog:modal e dialog::backdrop para conter a rolagem sem remover a barra da página, e limpei o valor de retorno no evento close para evitar valores residuais ao fechar com Esc ("read dialog.returnValue in a close listener to learn which button was used, then reset it with dialog.returnValue = ''").
+light-dismiss-a-dialog: Configurei closedby="any" nos modais e adicionei o fallback de verificação de coordenadas via getBoundingClientRect() para navegadores sem suporte nativo, evitando fechamento acidental ao clicar no preenchimento interno do modal ("For browsers that do not yet support closedby, you must implement a fallback for light-dismiss by checking if a click occurred outside the dialog content's boundaries").
+form-fields-automatically-fit-contents: Apliquei field-sizing: content com height: auto, min-block-size e max-block-size, mantendo width: 100% nas <textarea> para que cresçam verticalmente conforme você digita sem encolher na horizontal ("apply an explicit width (like width: 100%) to the textarea. This forces the textarea to maintain a stable horizontal width while still auto-sizing vertically as content wraps.").
+
+### 3. Código Gerado pela IA
+
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catálogo de Prompts & Reflexões IA — PeerViewRev</title>
+  <style>
+    :root {
+      --bg-page: #ffffff;
+      --bg-sidebar: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border-color: #e2e8f0;
+      --border-focus: #2563eb;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --ide-bg: #1e1e2e;
+      --ide-header: #181825;
+      --ide-gutter: #11111b;
+      --ide-text: #cdd6f4;
+      --ide-line-num: #6c7086;
+      --ide-border: #313244;
+      --radius: 10px;
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Layout Principal */
+    .app-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      min-height: 100vh;
+      background: var(--bg-page);
+    }
+
+    /* Aba Lateral (Sidebar) */
+    .sidebar {
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 1.25rem 1rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      background: #ffffff;
+    }
+
+    .sidebar-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .sidebar-subtitle {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .sync-status {
+      margin-top: 0.75rem;
+      padding: 0.45rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: #f0fdf4;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+
+    .sync-status.offline {
+      background: #fffbeb;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+
+    .sync-status.offline .status-dot {
+      background: #d97706;
+    }
+
+    .sidebar-actions {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .btn-mode {
+      width: 100%;
+      text-align: left;
+      padding: 0.55rem 0.75rem;
+      border-radius: 7px;
+      border: 1px solid var(--border-color);
+      background: #ffffff;
+      color: var(--text-main);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.15s ease;
+    }
+
+    .btn-mode:hover {
+      border-color: #cbd5e1;
+      background: var(--bg-subtle);
+    }
+
+    .btn-mode.active {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: var(--primary);
+    }
+
+    .badge-count {
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      padding: 0.1rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .btn-mode.active .badge-count {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .topic-list-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.75rem 0.75rem 1.5rem;
+    }
+
+    .topic-list-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      padding: 0 0.35rem 0.5rem;
+    }
+
+    .topic-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .topic-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-main);
+      font-size: 0.84rem;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .topic-nav-item:hover {
+      background: #e2e8f0;
+    }
+
+    .topic-nav-item.active {
+      background: #ffffff;
+      border-color: var(--border-color);
+      box-shadow: var(--shadow-sm);
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .topic-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 24px;
+      padding: 0 6px;
+      border-radius: 6px;
+      background: #e2e8f0;
+      color: #334155;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .topic-nav-item.active .topic-num {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .topic-nav-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    .topic-code-tag {
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: #1e1e2e;
+      color: #a6e3a1;
+      font-family: monospace;
+      flex-shrink: 0;
+    }
+
+    .sidebar-footer {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: #ffffff;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: background 0.15s ease;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-subtle);
+    }
+
+    /* Área Principal Branca e Rolável */
+    .main-area {
+      background: #ffffff;
+      min-height: 100vh;
+      padding: 2rem 2.5rem 6rem;
+      overflow-y: auto;
+    }
+
+    .main-container {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .page-topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+
+    .page-heading h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .page-heading p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .topbar-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 0.6rem 1.1rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      box-shadow: var(--shadow-sm);
+      transition: background 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Lista de Cards de Tópicos */
+    .topics-stream {
+      display: flex;
+      flex-direction: column;
+      gap: 2.25rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1.5rem;
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius);
+      background: #fafafa;
+    }
+
+    .empty-state h2 {
+      font-size: 1.15rem;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      max-width: 460px;
+      margin: 0 auto 1.25rem;
+    }
+
+    /* Card de Registro (As 4 Áreas Uma Embaixo da Outra) */
+    .topic-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .topic-card:focus-within {
+      border-color: #93c5fd;
+      box-shadow: var(--shadow-md);
+    }
+
+    .topic-card-header {
+      background: var(--bg-sidebar);
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .topic-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .topic-badge {
+      background: var(--primary);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .topic-title-input {
+      flex: 1;
+      border: 1px solid transparent;
+      background: transparent;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-main);
+      padding: 0.3rem 0.5rem;
+      border-radius: 6px;
+      width: 100%;
+    }
+
+    .topic-title-input:hover {
+      background: #ffffff;
+      border-color: var(--border-color);
+    }
+
+    .topic-title-input:focus {
+      outline: none;
+      background: #ffffff;
+      border-color: var(--border-focus);
+    }
+
+    .topic-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-chip {
+      padding: 0.3rem 0.65rem;
+      font-size: 0.76rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: #ffffff;
+      color: var(--text-main);
+      cursor: pointer;
+    }
+
+    .btn-chip:hover {
+      background: var(--bg-subtle);
+    }
+
+    .btn-chip.danger {
+      color: var(--danger);
+      border-color: #fecaca;
+    }
+
+    .btn-chip.danger:hover {
+      background: #fef2f2;
+    }
+
+    .topic-card-body {
+      padding: 1.35rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .field-block {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .field-label {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .field-step-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #eff6ff;
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 700;
+      border: 1px solid #bfdbfe;
+    }
+
+    .field-hint {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    /* Textareas Simples com Auto-ajuste (field-sizing: content) */
+    .simple-textarea {
+      field-sizing: content;
+      height: auto;
+      width: 100%;
+      min-block-size: 4lh;
+      max-block-size: 22lh;
+      padding: 0.75rem 0.9rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.92rem;
+      line-height: 1.55;
+      resize: vertical;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .simple-textarea:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    /* Área 3: Editor de Código Estilo IDE */
+    .ide-wrapper {
+      border-radius: 9px;
+      overflow: hidden;
+      border: 1px solid var(--ide-border);
+      background: var(--ide-bg);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .ide-topbar {
+      background: var(--ide-header);
+      padding: 0.5rem 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--ide-border);
+    }
+
+    .ide-dots {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ide-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+
+    .ide-dot.red { background: #f38ba8; }
+    .ide-dot.yellow { background: #f9e2af; }
+    .ide-dot.green { background: #a6e3a1; }
+
+    .ide-filename {
+      font-family: "JetBrains Mono", "Fira Code", Consolas, Monaco, monospace;
+      font-size: 0.75rem;
+      color: #a6adc8;
+      margin-left: 0.5rem;
+    }
+
+    .ide-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .ide-lang-select {
+      background: #313244;
+      color: #cdd6f4;
+      border: 1px solid #45475a;
+      border-radius: 5px;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .ide-copy-btn {
+      background: #313244;
+      color: #cdd6f4;
+      border: 1px solid #45475a;
+      border-radius: 5px;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.74rem;
+      cursor: pointer;
+    }
+
+    .ide-copy-btn:hover {
+      background: #45475a;
+    }
+
+    .ide-editor-body {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      position: relative;
+      min-height: 160px;
+    }
+
+    .ide-line-numbers {
+      background: var(--ide-gutter);
+      color: var(--ide-line-num);
+      padding: 0.85rem 0.5rem;
+      text-align: right;
+      font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, Monaco, monospace;
+      font-size: 0.86rem;
+      line-height: 1.6;
+      user-select: none;
+      border-right: 1px solid var(--ide-border);
+      white-space: pre;
+      overflow: hidden;
+    }
+
+    .ide-textarea {
+      field-sizing: content;
+      height: auto;
+      width: 100%;
+      min-block-size: 7lh;
+      max-block-size: 28lh;
+      background: var(--ide-bg);
+      color: var(--ide-text);
+      border: none;
+      padding: 0.85rem 1rem;
+      font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, Monaco, monospace;
+      font-size: 0.86rem;
+      line-height: 1.6;
+      tab-size: 2;
+      white-space: pre;
+      overflow-x: auto;
+      resize: vertical;
+    }
+
+    .ide-textarea:focus {
+      outline: none;
+    }
+
+    .ide-textarea::placeholder {
+      color: #585b70;
+    }
+
+    /* Botão Flutuante (+) Sempre no Canto */
+    .fab-add {
+      position: fixed;
+      right: 2rem;
+      bottom: 2rem;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      font-size: 2rem;
+      font-weight: 400;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s ease, background 0.15s ease;
+      z-index: 50;
+    }
+
+    .fab-add:hover {
+      background: var(--primary-hover);
+      transform: scale(1.06);
+    }
+
+    .fab-add:active {
+      transform: scale(0.97);
+    }
+
+    /* Dialog Nativo (<dialog>) com Regras Modernas */
+    dialog {
+      margin: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 0;
+      max-width: 520px;
+      width: calc(100% - 2rem);
+      background: #ffffff;
+      color: var(--text-main);
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+    }
+
+    dialog:modal {
+      overscroll-behavior: contain;
+    }
+
+    dialog::backdrop {
+      overflow: hidden;
+      overscroll-behavior: contain;
+      background-color: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(2px);
+    }
+
+    .dialog-box {
+      padding: 1.5rem;
+    }
+
+    .dialog-box h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .dialog-box p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1.1rem;
+    }
+
+    .dialog-input-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .dialog-input-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+      color: var(--text-main);
+    }
+
+    .dialog-text-input {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 7px;
+      font-size: 0.9rem;
+    }
+
+    .dialog-text-input:focus {
+      outline: none;
+      border-color: var(--border-focus);
+    }
+
+    .dialog-choices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .choice-btn {
+      padding: 0.9rem 0.75rem;
+      border-radius: 9px;
+      border: 2px solid var(--border-color);
+      background: #ffffff;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .choice-btn:hover {
+      border-color: var(--primary);
+      background: #eff6ff;
+    }
+
+    .choice-btn strong {
+      font-size: 0.9rem;
+      color: var(--text-main);
+    }
+
+    .choice-btn span {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    .dialog-footer {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    /* Dialog de Visualização Markdown */
+    #mdPreviewDialog {
+      max-width: 780px;
+    }
+
+    .md-preview-area {
+      width: 100%;
+      min-height: 360px;
+      max-height: 60vh;
+      padding: 1rem;
+      border-radius: 8px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+      border: 1px solid #334155;
+    }
+
+    @media (max-width: 820px) {
+      .app-layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        height: auto;
+        position: static;
+      }
+      .main-area {
+        padding: 1.25rem 1rem 5rem;
+      }
+      .dialog-choices {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Aba Lateral -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">
+          <span>📚 Catálogo IA (PPW2)</span>
+        </div>
+        <p class="sidebar-subtitle">Conversão automática para <code>/docs/*.md</code></p>
+        <div id="syncBadge" class="sync-status">
+          <span class="status-dot"></span>
+          <span id="syncText">Sincronizado com /docs</span>
+        </div>
+      </div>
+
+      <div class="sidebar-actions">
+        <button type="button" id="btnShowAll" class="btn-mode active">
+          <span>📋 Exibir Todos (Enumerados)</span>
+          <span id="totalBadge" class="badge-count">0</span>
+        </button>
+      </div>
+
+      <div class="topic-list-container">
+        <div class="topic-list-label">Tópicos Criados</div>
+        <ul id="sidebarTopicList" class="topic-list"></ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <button type="button" id="btnPreviewMd" class="btn-secondary">
+          👁️ Ver Arquivo .MD Gerado
+        </button>
+        <button type="button" id="btnDownloadMd" class="btn-secondary">
+          ⬇️ Baixar ai.decisions.md
+        </button>
+      </div>
+    </aside>
+
+    <!-- Tela Branca Principal Scrolável -->
+    <main class="main-area">
+      <div class="main-container">
+        <header class="page-topbar">
+          <div class="page-heading">
+            <h1 id="viewTitle">Todos os Tópicos Registrados</h1>
+            <p id="viewSubtitle">
+              Registre seus prompts, respostas da IA, códigos gerados e sua reflexão crítica. Tudo é salvo em <code>docs/ai.decisions.md</code>.
+            </p>
+          </div>
+          <div class="topbar-controls">
+            <button type="button" id="btnTopAdd" class="btn-primary">
+              + Novo Registro
+            </button>
+          </div>
+        </header>
+
+        <section id="topicsContainer" class="topics-stream"></section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Botão Flutuante + no Canto -->
+  <button
+    type="button"
+    id="fabAddBtn"
+    class="fab-add"
+    title="Adicionar novo tópico de IA"
+    aria-label="Adicionar novo tópico de IA"
+  >
+    +
+  </button>
+
+  <!-- Modal Perguntando se Conterá Código -->
+  <dialog id="addTopicDialog" closedby="any" aria-labelledby="addDialogTitle">
+    <form method="dialog" class="dialog-box">
+      <h2 id="addDialogTitle">Novo Registro de Uso da IA</h2>
+      <p>Este registro conterá um trecho de código na resposta da IA?</p>
+
+      <div class="dialog-input-group">
+        <label for="newTopicTitleInput">Título do Tópico / Desafio (opcional):</label>
+        <input
+          type="text"
+          id="newTopicTitleInput"
+          class="dialog-text-input"
+          placeholder="Ex: Algoritmo de Distribuição Cega sem Conflito de Instituição"
+          autofocus
+        />
+      </div>
+
+      <div class="dialog-choices">
+        <button type="submit" value="with-code" class="choice-btn">
+          <strong>💻 Sim, conterá código</strong>
+          <span>Ativa os passos 1, 2, 3 (Editor IDE) e 4 (Reflexão)</span>
+        </button>
+        <button type="submit" value="no-code" class="choice-btn">
+          <strong>📝 Não, apenas texto</strong>
+          <span>Ativa apenas os passos 1 (Pergunta), 2 (Resposta) e 4 (Reflexão)</span>
+        </button>
+      </div>
+
+      <div class="dialog-footer">
+        <button type="submit" value="cancel" class="btn-chip">Cancelar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal para Visualizar o Markdown Gerado -->
+  <dialog id="mdPreviewDialog" closedby="any" aria-labelledby="mdPreviewTitle">
+    <form method="dialog" class="dialog-box">
+      <h2 id="mdPreviewTitle">Pré-visualização do Markdown (<code>docs/ai.decisions.md</code>)</h2>
+      <p>Este conteúdo é gravado automaticamente na pasta <code>docs/</code> na raiz do seu projeto.</p>
+      <pre id="mdPreviewContent" class="md-preview-area"></pre>
+      <div class="dialog-footer" style="gap: 0.5rem;">
+        <button type="button" id="btnCopyMd" class="btn-chip">📋 Copiar Markdown</button>
+        <button type="submit" value="close" class="btn-primary">Fechar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    const API_URL = 'http://localhost:3456/api/docs';
+    const STORAGE_KEY = 'peerviewrev_ai_docs_v1';
+
+    let items = [];
+    let currentFilterId = 'ALL'; // 'ALL' ou id de um tópico específico
+    let syncTimer = null;
+
+    const sidebarTopicList = document.getElementById('sidebarTopicList');
+    const topicsContainer = document.getElementById('topicsContainer');
+    const totalBadge = document.getElementById('totalBadge');
+    const btnShowAll = document.getElementById('btnShowAll');
+    const viewTitle = document.getElementById('viewTitle');
+    const viewSubtitle = document.getElementById('viewSubtitle');
+    const syncBadge = document.getElementById('syncBadge');
+    const syncText = document.getElementById('syncText');
+
+    const addTopicDialog = document.getElementById('addTopicDialog');
+    const newTopicTitleInput = document.getElementById('newTopicTitleInput');
+    const mdPreviewDialog = document.getElementById('mdPreviewDialog');
+    const mdPreviewContent = document.getElementById('mdPreviewContent');
+
+    // Fallback para light-dismiss em navegadores sem suporte nativo a closedby="any"
+    if (!('closedBy' in HTMLDialogElement.prototype)) {
+      for (const dlg of document.querySelectorAll('dialog[closedby="any"]')) {
+        dlg.addEventListener('click', (event) => {
+          if (event.target !== dlg) return;
+          const rect = dlg.getBoundingClientRect();
+          const inside =
+            rect.top <= event.clientY &&
+            event.clientY <= rect.top + rect.height &&
+            rect.left <= event.clientX &&
+            event.clientX <= rect.left + rect.width;
+          if (!inside) dlg.close();
+        });
+      }
+    }
+
+    function generateId() {
+      return 'topic_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    }
+
+    function getDisplayTitle(item, idx) {
+      if (item.title && item.title.trim()) return item.title.trim();
+      if (item.prompt && item.prompt.trim()) {
+        const firstLine = item.prompt.trim().split('\n')[0];
+        return firstLine.length > 52 ? firstLine.slice(0, 52) + '...' : firstLine;
+      }
+      return `Tópico ${idx + 1}`;
+    }
+
+    function buildMarkdown(list) {
+      let md = `# Catálogo de Decisões e Uso Pedagógico da IA (AI-LOG)\n\n`;
+      md += `Documento gerado e sincronizado automaticamente com os registros de prompts, respostas, códigos e reflexões críticas do projeto **PeerViewRev**.\n\n`;
+
+      if (list.length === 0) {
+        md += `_Nenhum tópico registrado ainda._\n`;
+        return md;
+      }
+
+      list.forEach((item, idx) => {
+        const num = idx + 1;
+        const title = getDisplayTitle(item, idx);
+        md += `## ${num}. ${title}\n\n`;
+        md += `> **Data/Hora:** ${item.createdAt || ''}\n\n`;
+        md += `### 1. Pergunta / Prompt Enviado para a IA\n\n`;
+        md += `${item.prompt && item.prompt.trim() ? item.prompt.trim() : '_Não preenchido_'}\n\n`;
+        md += `### 2. Resposta da IA\n\n`;
+        md += `${item.response && item.response.trim() ? item.response.trim() : '_Não preenchido_'}\n\n`;
+
+        if (item.hasCode) {
+          const lang = item.language || 'typescript';
+          md += `### 3. Código Gerado pela IA\n\n`;
+          md += `\`\`\`${lang}\n${item.code ? item.code : '// Sem código'}\n\`\`\`\n\n`;
+        }
+
+        md += `### ${item.hasCode ? '4' : '3'}. Reflexão e Crítica do Aluno\n\n`;
+        md += `${item.reflection && item.reflection.trim() ? item.reflection.trim() : '_Não preenchido_'}\n\n`;
+        md += `---\n\n`;
+      });
+
+      return md;
+    }
+
+    async function loadInitialData() {
+      try {
+        const res = await fetch(API_URL);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.items) && data.items.length > 0) {
+            items = data.items;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+            setSyncState(true, 'Sincronizado com /docs');
+            renderAll();
+            return;
+          }
+        }
+      } catch (_) {}
+
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          items = JSON.parse(saved);
+        } catch (_) {
+          items = [];
+        }
+      }
+      renderAll();
+      triggerSync();
+    }
+
+    function setSyncState(online, message) {
+      if (online) {
+        syncBadge.classList.remove('offline');
+      } else {
+        syncBadge.classList.add('offline');
+      }
+      syncText.textContent = message;
+    }
+
+    function triggerSync() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      setSyncState(true, 'Salvando em /docs...');
+
+      if (syncTimer) clearTimeout(syncTimer);
+      syncTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items }),
+          });
+          if (res.ok) {
+            setSyncState(true, `Salvo em /docs (${items.length} tópico${items.length === 1 ? '' : 's'})`);
+          } else {
+            throw new Error('Status ' + res.status);
+          }
+        } catch (err) {
+          setSyncState(false, 'Salvo localmente (use Baixar .MD)');
+        }
+      }, 250);
+    }
+
+    function renderSidebar() {
+      totalBadge.textContent = String(items.length);
+      btnShowAll.classList.toggle('active', currentFilterId === 'ALL');
+
+      sidebarTopicList.innerHTML = '';
+      items.forEach((item, index) => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'topic-nav-item' + (currentFilterId === item.id ? ' active' : '');
+
+        const numSpan = document.createElement('span');
+        numSpan.className = 'topic-num';
+        numSpan.textContent = String(index + 1);
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'topic-nav-text';
+        textSpan.textContent = getDisplayTitle(item, index);
+
+        btn.appendChild(numSpan);
+        btn.appendChild(textSpan);
+
+        if (item.hasCode) {
+          const codeTag = document.createElement('span');
+          codeTag.className = 'topic-code-tag';
+          codeTag.textContent = '</>';
+          btn.appendChild(codeTag);
+        }
+
+        btn.addEventListener('click', () => {
+          currentFilterId = item.id;
+          renderAll();
+        });
+
+        li.appendChild(btn);
+        sidebarTopicList.appendChild(li);
+      });
+    }
+
+    function updateLineNumbers(textarea, gutter) {
+      const lines = (textarea.value || '').split('\n').length;
+      let nums = '';
+      for (let i = 1; i <= Math.max(1, lines); i++) {
+        nums += i + '\n';
+      }
+      gutter.textContent = nums;
+    }
+
+    function renderTopics() {
+      topicsContainer.innerHTML = '';
+
+      if (items.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.innerHTML = `
+          <h2>Nenhum registro de IA criado ainda</h2>
+          <p>Clique no botão <strong>+</strong> no canto da tela para adicionar sua primeira pergunta para a IA, a resposta, o código (opcional) e sua reflexão.</p>
+        `;
+        const startBtn = document.createElement('button');
+        startBtn.type = 'button';
+        startBtn.className = 'btn-primary';
+        startBtn.textContent = '+ Criar Primeiro Tópico';
+        startBtn.addEventListener('click', openAddModal);
+        empty.appendChild(startBtn);
+        topicsContainer.appendChild(empty);
+        return;
+      }
+
+      const visibleItems =
+        currentFilterId === 'ALL'
+          ? items.map((item, idx) => ({ item, idx }))
+          : items
+              .map((item, idx) => ({ item, idx }))
+              .filter((entry) => entry.item.id === currentFilterId);
+
+      if (currentFilterId === 'ALL') {
+        viewTitle.textContent = 'Todos os Tópicos Registrados (Em Ordem)';
+        viewSubtitle.textContent = `Exibindo ${items.length} tópico(s) enumerados e sincronizados automaticamente com a pasta /docs.`;
+      } else if (visibleItems.length > 0) {
+        const { item, idx } = visibleItems[0];
+        viewTitle.textContent = `Tópico #${idx + 1}: ${getDisplayTitle(item, idx)}`;
+        viewSubtitle.textContent = 'Visualizando tópico individual. Clique em "Exibir Todos" na aba lateral para ver a lista completa.';
+      }
+
+      visibleItems.forEach(({ item, idx }) => {
+        const card = document.createElement('article');
+        card.className = 'topic-card';
+        card.id = 'card-' + item.id;
+
+        // Cabeçalho do Card
+        const header = document.createElement('div');
+        header.className = 'topic-card-header';
+
+        const left = document.createElement('div');
+        left.className = 'topic-header-left';
+
+        const badge = document.createElement('span');
+        badge.className = 'topic-badge';
+        badge.textContent = `Tópico #${idx + 1}`;
+
+        const titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.className = 'topic-title-input';
+        titleInput.placeholder = `Título do Tópico #${idx + 1} (ex: Regra de Conflito de Revisores)...`;
+        titleInput.value = item.title || '';
+        titleInput.addEventListener('input', () => {
+          item.title = titleInput.value;
+          renderSidebar();
+          triggerSync();
+        });
+
+        left.appendChild(badge);
+        left.appendChild(titleInput);
+
+        const actions = document.createElement('div');
+        actions.className = 'topic-header-actions';
+
+        const toggleCodeBtn = document.createElement('button');
+        toggleCodeBtn.type = 'button';
+        toggleCodeBtn.className = 'btn-chip';
+        toggleCodeBtn.textContent = item.hasCode ? '💻 Ocultar Campo de Código' : '💻 + Adicionar Campo de Código';
+        toggleCodeBtn.addEventListener('click', () => {
+          item.hasCode = !item.hasCode;
+          renderAll();
+          triggerSync();
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn-chip danger';
+        deleteBtn.textContent = 'Excluir';
+        deleteBtn.addEventListener('click', () => {
+          if (confirm(`Deseja realmente excluir o Tópico #${idx + 1}?`)) {
+            items = items.filter((i) => i.id !== item.id);
+            if (currentFilterId === item.id) currentFilterId = 'ALL';
+            renderAll();
+            triggerSync();
+          }
+        });
+
+        actions.appendChild(toggleCodeBtn);
+        actions.appendChild(deleteBtn);
+
+        header.appendChild(left);
+        header.appendChild(actions);
+
+        // Corpo com os 4 campos um embaixo do outro
+        const body = document.createElement('div');
+        body.className = 'topic-card-body';
+
+        // 1. Pergunta para a IA
+        const step1 = document.createElement('div');
+        step1.className = 'field-block';
+        step1.innerHTML = `
+          <label class="field-label">
+            <span class="field-step-tag">
+              <span class="step-number">1</span>
+              Pergunta que eu fiz para a IA (Prompt Utilizado)
+            </span>
+            <span class="field-hint">O prompt exato enviado</span>
+          </label>
+        `;
+        const promptArea = document.createElement('textarea');
+        promptArea.className = 'simple-textarea';
+        promptArea.placeholder = 'Cole ou digite aqui a pergunta exata que você enviou para a IA...';
+        promptArea.value = item.prompt || '';
+        promptArea.addEventListener('input', () => {
+          item.prompt = promptArea.value;
+          renderSidebar();
+          triggerSync();
+        });
+        step1.appendChild(promptArea);
+        body.appendChild(step1);
+
+        // 2. Resposta da IA
+        const step2 = document.createElement('div');
+        step2.className = 'field-block';
+        step2.innerHTML = `
+          <label class="field-label">
+            <span class="field-step-tag">
+              <span class="step-number">2</span>
+              Resposta da IA (Explicação Bruta)
+            </span>
+            <span class="field-hint">O que a IA respondeu</span>
+          </label>
+        `;
+        const responseArea = document.createElement('textarea');
+        responseArea.className = 'simple-textarea';
+        responseArea.placeholder = 'Cole aqui a resposta textual dada pela IA...';
+        responseArea.value = item.response || '';
+        responseArea.addEventListener('input', () => {
+          item.response = responseArea.value;
+          triggerSync();
+        });
+        step2.appendChild(responseArea);
+        body.appendChild(step2);
+
+        // 3. Código da IA (Opcional - Estilo IDE)
+        if (item.hasCode) {
+          const step3 = document.createElement('div');
+          step3.className = 'field-block';
+          step3.innerHTML = `
+            <label class="field-label">
+              <span class="field-step-tag">
+                <span class="step-number">3</span>
+                Código da Resposta da IA (Formato IDE)
+              </span>
+              <span class="field-hint">Suporta Tab e numeração de linhas</span>
+            </label>
+          `;
+
+          const ideWrapper = document.createElement('div');
+          ideWrapper.className = 'ide-wrapper';
+
+          const ideTopbar = document.createElement('div');
+          ideTopbar.className = 'ide-topbar';
+          ideTopbar.innerHTML = `
+            <div class="ide-dots">
+              <span class="ide-dot red"></span>
+              <span class="ide-dot yellow"></span>
+              <span class="ide-dot green"></span>
+              <span class="ide-filename">ia-suggestion.${item.language === 'sql' ? 'sql' : 'ts'}</span>
+            </div>
+          `;
+
+          const ideControls = document.createElement('div');
+          ideControls.className = 'ide-controls';
+
+          const langSelect = document.createElement('select');
+          langSelect.className = 'ide-lang-select';
+          ['typescript', 'javascript', 'sql', 'prisma', 'json', 'bash', 'html'].forEach((lang) => {
+            const opt = document.createElement('option');
+            opt.value = lang;
+            opt.textContent = lang.toUpperCase();
+            if ((item.language || 'typescript') === lang) opt.selected = true;
+            langSelect.appendChild(opt);
+          });
+
+          const copyCodeBtn = document.createElement('button');
+          copyCodeBtn.type = 'button';
+          copyCodeBtn.className = 'ide-copy-btn';
+          copyCodeBtn.textContent = 'Copiar Código';
+
+          ideControls.appendChild(langSelect);
+          ideControls.appendChild(copyCodeBtn);
+          ideTopbar.appendChild(ideControls);
+
+          const ideBody = document.createElement('div');
+          ideBody.className = 'ide-editor-body';
+
+          const gutter = document.createElement('div');
+          gutter.className = 'ide-line-numbers';
+          gutter.textContent = '1\n';
+
+          const codeArea = document.createElement('textarea');
+          codeArea.className = 'ide-textarea';
+          codeArea.spellcheck = false;
+          codeArea.placeholder = '// Cole aqui o código gerado pela IA...';
+          codeArea.value = item.code || '';
+
+          updateLineNumbers(codeArea, gutter);
+
+          codeArea.addEventListener('input', () => {
+            item.code = codeArea.value;
+            updateLineNumbers(codeArea, gutter);
+            triggerSync();
+          });
+
+          // Suporte à tecla Tab igual a uma IDE
+          codeArea.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+              e.preventDefault();
+              const start = codeArea.selectionStart;
+              const end = codeArea.selectionEnd;
+              codeArea.value = codeArea.value.substring(0, start) + '  ' + codeArea.value.substring(end);
+              codeArea.selectionStart = codeArea.selectionEnd = start + 2;
+              item.code = codeArea.value;
+              updateLineNumbers(codeArea, gutter);
+              triggerSync();
+            }
+          });
+
+          langSelect.addEventListener('change', () => {
+            item.language = langSelect.value;
+            triggerSync();
+          });
+
+          copyCodeBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(codeArea.value || '');
+            copyCodeBtn.textContent = '✔ Copiado!';
+            setTimeout(() => (copyCodeBtn.textContent = 'Copiar Código'), 1500);
+          });
+
+          ideBody.appendChild(gutter);
+          ideBody.appendChild(codeArea);
+          ideWrapper.appendChild(ideTopbar);
+          ideWrapper.appendChild(ideBody);
+          step3.appendChild(ideWrapper);
+          body.appendChild(step3);
+        }
+
+        // 4. Reflexão e Crítica do Aluno
+        const step4 = document.createElement('div');
+        step4.className = 'field-block';
+        const stepNum4 = item.hasCode ? '4' : '3';
+        step4.innerHTML = `
+          <label class="field-label">
+            <span class="field-step-tag">
+              <span class="step-number">${stepNum4}</span>
+              Minha Reflexão Crítica e Refatoração
+            </span>
+            <span class="field-hint">O que a IA errou/limitou, o que você entendeu e como adaptou</span>
+          </label>
+        `;
+        const reflectionArea = document.createElement('textarea');
+        reflectionArea.className = 'simple-textarea';
+        reflectionArea.placeholder = 'Descreva aqui sua análise crítica sobre a resposta da IA: quais problemas você identificou (ex: falta de transação, acoplamento, erro de regra de negócio) e o que você aprendeu ou alterou...';
+        reflectionArea.value = item.reflection || '';
+        reflectionArea.addEventListener('input', () => {
+          item.reflection = reflectionArea.value;
+          triggerSync();
+        });
+        step4.appendChild(reflectionArea);
+        body.appendChild(step4);
+
+        card.appendChild(header);
+        card.appendChild(body);
+        topicsContainer.appendChild(card);
+      });
+    }
+
+    function renderAll() {
+      renderSidebar();
+      renderTopics();
+    }
+
+    function openAddModal() {
+      newTopicTitleInput.value = '';
+      addTopicDialog.returnValue = '';
+      addTopicDialog.showModal();
+    }
+
+    addTopicDialog.addEventListener('close', () => {
+      const choice = addTopicDialog.returnValue;
+      addTopicDialog.returnValue = '';
+
+      if (choice !== 'with-code' && choice !== 'no-code') return;
+
+      const newItem = {
+        id: generateId(),
+        title: newTopicTitleInput.value.trim(),
+        prompt: '',
+        response: '',
+        hasCode: choice === 'with-code',
+        language: 'typescript',
+        code: '',
+        reflection: '',
+        createdAt: new Date().toLocaleString('pt-BR'),
+      };
+
+      items.push(newItem);
+      currentFilterId = 'ALL';
+      renderAll();
+      triggerSync();
+
+      setTimeout(() => {
+        const el = document.getElementById('card-' + newItem.id);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          const firstTextarea = el.querySelector('textarea');
+          if (firstTextarea) firstTextarea.focus();
+        }
+      }, 60);
+    });
+
+    document.getElementById('fabAddBtn').addEventListener('click', openAddModal);
+    document.getElementById('btnTopAdd').addEventListener('click', openAddModal);
+
+    btnShowAll.addEventListener('click', () => {
+      currentFilterId = 'ALL';
+      renderAll();
+    });
+
+    document.getElementById('btnPreviewMd').addEventListener('click', () => {
+      mdPreviewContent.textContent = buildMarkdown(items);
+      mdPreviewDialog.showModal();
+    });
+
+    document.getElementById('btnCopyMd').addEventListener('click', (e) => {
+      navigator.clipboard.writeText(buildMarkdown(items));
+      e.target.textContent = '✔ Markdown Copiado!';
+      setTimeout(() => (e.target.textContent = '📋 Copiar Markdown'), 1500);
+    });
+
+    document.getElementById('btnDownloadMd').addEventListener('click', () => {
+      const md = buildMarkdown(items);
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ai.decisions.md';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    loadInitialData();
+  </script>
+</body>
+</html>
+
+```
+
+### 4. Reflexão e Crítica do Aluno
+
+Criei este projeto. Pois desta forma fica mais fácil de visualizar e então possibilita eu terminar a atividade com uma cadência maior e uma organização que evite blocos de notas extremamente grande e mal formatados. Além disso, existe a conversão automática para arquivo .MD que possibilita a entrega ao professor de forma automatizada.
+
+---
